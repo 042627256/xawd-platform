@@ -13,6 +13,9 @@
     "NINE_ROUTER_API_KEY": "sk-6e4c5defb3de6300-twi7qt-24c79688",
     "NINE_ROUTER_BASE_URL": "https://9rxawd.up.railway.app/v1"
   },
+  "ai": {
+    "binding": "AI"
+  },
   "d1_databases": [
     {
       "binding": "DB",

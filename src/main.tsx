@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight, Brain, ChevronRight,
   FolderKanban, LayoutDashboard, Menu, Plus,
-  ShieldCheck, Sparkles, LogOut, Bot, SlidersHorizontal
+  Sparkles, LogOut, Bot, ImageIcon, MessageSquareText
 } from "lucide-react";
 import "./styles.css";
 
@@ -14,13 +14,11 @@ const nav = [
   ["Automation", <Sparkles />]
 ];
 
-// Mapping model resmi 9router ke tier AWD
-const availableModels = [
-  { id: "Comku", label: "AWD Standard (ChatGPT Style - Default)" },
-  { id: "ag/gemini-3.8-flash-high", label: "AWD Pro (Flash High Speed)" },
+const textModels = [
+  { id: "Comku", label: "AWD Standard (ChatGPT Style)" },
+  { id: "ag/gemini-3.8-flash-high", label: "AWD Pro (High Reasoning)" },
   { id: "ag/claude-opus-4-6-thinking", label: "AWD Deep Thinking (Opus)" },
-  { id: "ag/claude-sonnet-4-6", label: "AWD Sonnet Agent" },
-  { id: "All", label: "AWD Ultimate Combo (All Router)" }
+  { id: "ag/claude-sonnet-4-6", label: "AWD Sonnet Agent" }
 ];
 
 function App() {
@@ -29,10 +27,12 @@ function App() {
   const [mobile, setMobile] = useState(false);
   const [active, setActive] = useState("Overview");
 
+  // Mode: 'text' atau 'image'
+  const [mode, setMode] = useState<"text" | "image">("text");
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("Comku");
-  const [showCustomModel, setShowCustomModel] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
+  const [generatedImage, setGeneratedImage] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
@@ -43,19 +43,35 @@ function App() {
       .finally(() => setCheckingAuth(false));
   }, []);
 
-  const handleRunAi = async () => {
+  const handleExecute = async () => {
     if (!prompt.trim()) return;
     setAiLoading(true);
     setAiResponse("");
+    setGeneratedImage("");
 
     try {
-      const res = await fetch("/api/ai/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model: selectedModel })
-      });
-      const data = await res.json();
-      setAiResponse(data.reply || data.error || "Tidak ada respon dari server.");
+      if (mode === "text") {
+        const res = await fetch("/api/ai/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, model: selectedModel })
+        });
+        const data = await res.json();
+        setAiResponse(data.reply || data.error || "Tidak ada balasan.");
+      } else {
+        // Mode Gambar (Flux AI)
+        const res = await fetch("/api/ai/image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await res.json();
+        if (data.imageUrl) {
+          setGeneratedImage(data.imageUrl);
+        } else {
+          setAiResponse(data.error || "Gagal membuat gambar.");
+        }
+      }
     } catch (e: any) {
       setAiResponse("Error: " + e.message);
     } finally {
@@ -69,11 +85,7 @@ function App() {
   };
 
   if (checkingAuth) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#080b14", color: "#6366f1" }}>
-        Memuat ruang kerja AWD...
-      </div>
-    );
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#080b14", color: "#6366f1" }}>Memuat ruang kerja AWD...</div>;
   }
 
   return (
@@ -123,18 +135,44 @@ function App() {
             <div>
               <span className="eyebrow">WORKSPACE CERDAS AWD</span>
               <h1>Bangun sesuatu yang bermakna.</h1>
-              <p>Platform terintegrasi untuk berpikir, berkreasi, dan otomasi dalam satu kendali.</p>
+              <p>Buat percakapan cerdas atau generate gambar 3D / realistis langsung dari sini.</p>
             </div>
           </div>
 
           <section className="aiPanel">
-            <div className="aiTop" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="aiTop" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
               <div className="aiTitle">
                 <div className="aiIcon"><Sparkles /></div>
-                <div><b>AWD Command Center</b><small>Model aktif bawaan: ChatGPT-Style</small></div>
+                <div><b>AWD Command Center</b><small>{mode === "text" ? "Mode Obrolan & Analisis" : "Mode Generator Gambar (Flux)"}</small></div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {/* Switcher Tab: Text vs Image */}
+              <div style={{ display: "flex", background: "#121422", padding: "4px", borderRadius: "10px", gap: "4px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <button
+                  onClick={() => { setMode("text"); setGeneratedImage(""); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "6px",
+                    background: mode === "text" ? "#6366f1" : "transparent",
+                    color: "#fff", border: "none", padding: "6px 12px", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+                  }}
+                >
+                  <MessageSquareText size={14} /> Teks
+                </button>
+                <button
+                  onClick={() => { setMode("image"); setAiResponse(""); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "6px",
+                    background: mode === "image" ? "#6366f1" : "transparent",
+                    color: "#fff", border: "none", padding: "6px 12px", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+                  }}
+                >
+                  <ImageIcon size={14} /> Buat Gambar
+                </button>
+              </div>
+            </div>
+
+            {mode === "text" && (
+              <div style={{ marginTop: "12px" }}>
                 <select
                   value={selectedModel}
                   onChange={e => setSelectedModel(e.target.value)}
@@ -145,51 +183,14 @@ function App() {
                     padding: "7px 12px",
                     borderRadius: "8px",
                     outline: "none",
-                    fontSize: "13px"
+                    fontSize: "13px",
+                    width: "100%"
                   }}
                 >
-                  {availableModels.map(m => (
+                  {textModels.map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
-
-                <button
-                  onClick={() => setShowCustomModel(!showCustomModel)}
-                  title="Ketik Model ID Lainnya"
-                  style={{
-                    background: showCustomModel ? "#6366f1" : "rgba(255,255,255,0.08)",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "7px",
-                    color: "#fff",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center"
-                  }}
-                >
-                  <SlidersHorizontal size={14} />
-                </button>
-              </div>
-            </div>
-
-            {showCustomModel && (
-              <div style={{ padding: "8px 0" }}>
-                <input
-                  type="text"
-                  placeholder="Ketik ID model lainnya (misal: ag/gemini-pro-agent)"
-                  value={selectedModel}
-                  onChange={e => setSelectedModel(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    background: "#121422",
-                    border: "1px solid rgba(99, 102, 241, 0.4)",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "13px",
-                    boxSizing: "border-box"
-                  }}
-                />
               </div>
             )}
 
@@ -197,35 +198,47 @@ function App() {
               id="command"
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
-              placeholder="Beritahu AWD apa yang ingin Anda kerjakan..."
+              placeholder={mode === "text" ? "Beritahu AWD apa yang ingin Anda analisis atau tulis..." : "Contoh: Profil 3D Pixar logo huruf X AWD bersinar, sinematik, render blender 8k..."}
+              style={{ marginTop: "12px" }}
             />
 
             <div className="aiBottom">
               <div className="chips">
-                <button onClick={() => setPrompt("Ringkas inti bahasan ini: ")}>Ringkas</button>
-                <button onClick={() => setPrompt("Buat konsep arsitektur sistem untuk: ")}>Desain Sistem</button>
-                <button onClick={() => setPrompt("Analisis dan optimasi kode ini: ")}>Audit Kode</button>
+                {mode === "text" ? (
+                  <>
+                    <button onClick={() => setPrompt("Ringkas bahasan berikut: ")}>Ringkas</button>
+                    <button onClick={() => setPrompt("Rancang skema sistem untuk: ")}>Desain Sistem</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setPrompt("Karakter 3D animasi gaya Pixar untuk profil X AWD, pencahayaan studio sinematik")}>Gaya 3D Pixar</button>
+                    <button onClick={() => setPrompt("Foto futuristik logo teknologi neon X AWD, latar belakang cyber gelap 8k")}>Cyber Neon</button>
+                  </>
+                )}
               </div>
-              <button className="run" onClick={handleRunAi} disabled={aiLoading}>
+              <button className="run" onClick={handleExecute} disabled={aiLoading}>
                 {aiLoading ? "Memproses..." : "Run"} <ArrowUpRight />
               </button>
             </div>
 
+            {/* Hasil Output Teks */}
             {aiResponse && (
-              <div style={{
-                marginTop: "16px",
-                padding: "16px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "10px",
-                fontSize: "14px",
-                lineHeight: "1.6",
-                whiteSpace: "pre-wrap"
-              }}>
+              <div style={{ marginTop: "16px", padding: "16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", fontSize: "14px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", color: "#818cf8", fontSize: "12px", fontWeight: "600" }}>
-                  <Bot size={14} /> Respon AWD ({availableModels.find(m => m.id === selectedModel)?.label || selectedModel}):
+                  <Bot size={14} /> Respon AWD:
                 </div>
                 {aiResponse}
+              </div>
+            )}
+
+            {/* Hasil Output Gambar */}
+            {generatedImage && (
+              <div style={{ marginTop: "16px", padding: "16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", textAlign: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <span style={{ color: "#818cf8", fontSize: "13px", fontWeight: "600" }}>Hasil Gambar AI (Flux):</span>
+                  <a href={generatedImage} download="awd-generated.jpg" style={{ color: "#6366f1", fontSize: "12px", textDecoration: "underline" }}>Unduh Gambar</a>
+                </div>
+                <img src={generatedImage} alt="AI Generated" style={{ maxWidth: "100%", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }} />
               </div>
             )}
           </section>
