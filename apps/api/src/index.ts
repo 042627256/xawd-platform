@@ -1,0 +1,3 @@
+export interface Env{DB:D1Database}
+const h={"content-type":"application/json","access-control-allow-origin":"*","access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"content-type,authorization"};
+export default{async fetch(req:Request){const u=new URL(req.url);if(req.method==="OPTIONS")return new Response(null,{headers:h});if(u.pathname==="/health")return new Response(JSON.stringify({ok:true,service:"xawd-api",time:new Date().toISOString()}),{headers:h});if(u.pathname==="/v1/config")return new Response(JSON.stringify({product:"XAWD",version:"2.0",features:{workspace:true,ai:true,byok:true,wallet:false,swap:false,custody:false}}),{headers:h});return new Response(JSON.stringify({error:"not_found"}),{status:404,headers:h})}};
