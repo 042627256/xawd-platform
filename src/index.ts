@@ -1,18 +1,28 @@
 export interface Env {
   DB: D1Database;
+  ASSETS: Fetcher;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // 1. Health Check
+    // 1. Health Check Endpoint
     if (url.pathname === "/api/health") {
       try {
         const result = await env.DB.prepare("SELECT 1 as alive").first();
-        return Response.json({ status: "ok", db: result ? "connected" : "idle" });
+        return new Response(JSON.stringify({ status: "ok", db: result ? "connected" : "idle" }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+          }
+        });
       } catch (e: any) {
-        return Response.json({ status: "error", message: e.message }, { status: 500 });
+        return new Response(JSON.stringify({ status: "error", message: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+        });
       }
     }
 
@@ -21,7 +31,10 @@ export default {
       try {
         const { email, password } = await request.json() as any;
         if (!email || !password) {
-          return Response.json({ error: "Email dan password wajib diisi" }, { status: 400 });
+          return new Response(JSON.stringify({ error: "Email dan password wajib diisi" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
         }
 
         const id = crypto.randomUUID();
@@ -31,10 +44,21 @@ export default {
           "INSERT INTO users (id, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
         ).bind(id, email, password, now, now).run();
 
-        return Response.json({ success: true, message: "User registered", userId: id });
+        return new Response(JSON.stringify({ success: true, message: "User registered", userId: id }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        });
       } catch (err: any) {
-        return Response.json({ error: err.message }, { status: 400 });
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
       }
+    }
+
+    // Teruskan request non-API ke static asset Vite/SPA
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
     }
 
     return new Response("Not Found", { status: 404 });
