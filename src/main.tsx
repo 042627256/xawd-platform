@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight, Brain, ChevronRight,
   FolderKanban, LayoutDashboard, Menu, Plus,
-  ShieldCheck, Sparkles, Wallet, X, LogOut, Bot, SlidersHorizontal
+  ShieldCheck, Sparkles, LogOut, Bot, SlidersHorizontal
 } from "lucide-react";
 import "./styles.css";
 
@@ -14,11 +14,13 @@ const nav = [
   ["Automation", <Sparkles />]
 ];
 
+// Mapping model resmi 9router ke tier AWD
 const availableModels = [
-  { id: "gpt-4o-mini", label: "AWD Standard (GPT-4o Mini)" },
-  { id: "gpt-4o", label: "AWD Pro (GPT-4o)" },
-  { id: "claude-3-5-sonnet", label: "AWD Sonnet" },
-  { id: "Comku", label: "Comku Combo" }
+  { id: "Comku", label: "AWD Standard (ChatGPT Style - Default)" },
+  { id: "ag/gemini-3.8-flash-high", label: "AWD Pro (Flash High Speed)" },
+  { id: "ag/claude-opus-4-6-thinking", label: "AWD Deep Thinking (Opus)" },
+  { id: "ag/claude-sonnet-4-6", label: "AWD Sonnet Agent" },
+  { id: "All", label: "AWD Ultimate Combo (All Router)" }
 ];
 
 function App() {
@@ -28,7 +30,7 @@ function App() {
   const [active, setActive] = useState("Overview");
 
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [selectedModel, setSelectedModel] = useState("Comku");
   const [showCustomModel, setShowCustomModel] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -53,7 +55,7 @@ function App() {
         body: JSON.stringify({ prompt, model: selectedModel })
       });
       const data = await res.json();
-      setAiResponse(data.reply || data.error || "No response received.");
+      setAiResponse(data.reply || data.error || "Tidak ada respon dari server.");
     } catch (e: any) {
       setAiResponse("Error: " + e.message);
     } finally {
@@ -67,7 +69,11 @@ function App() {
   };
 
   if (checkingAuth) {
-    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#080b14", color: "#6366f1" }}>Loading workspace...</div>;
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#080b14", color: "#6366f1" }}>
+        Memuat ruang kerja AWD...
+      </div>
+    );
   }
 
   return (
@@ -76,9 +82,9 @@ function App() {
         <div className="brand">
           <div className="brandmark">X</div>
           <b>XAWD</b>
-          <button className="icon close" onClick={() => setMobile(false)}><X /></button>
+          <button className="icon close" onClick={() => setMobile(false)}>✕</button>
         </div>
-        <button className="newBtn"><Plus /> New workspace</button>
+        <button className="newBtn"><Plus /> Ruang Kerja Baru</button>
         <div className="nav">
           {nav.map(([label, icon]) => (
             <button key={label as string} className={active === label ? "navItem active" : "navItem"} onClick={() => { setActive(label as string); setMobile(false); }}>
@@ -92,11 +98,13 @@ function App() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div className="avatar">{currentUser?.email?.[0]?.toUpperCase() || "A"}</div>
               <div style={{ overflow: "hidden" }}>
-                <b style={{ textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.email?.split("@")[0] || "Workspace"}</b>
-                <small>{currentUser?.email || "Connected"}</small>
+                <b style={{ textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.email?.split("@")[0] || "Akun AWD"}</b>
+                <small>{currentUser?.email || "Online"}</small>
               </div>
             </div>
-            <button onClick={handleLogout} title="Logout" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}><LogOut size={16} /></button>
+            <button onClick={handleLogout} title="Keluar" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}>
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
@@ -104,7 +112,7 @@ function App() {
       <main className="main">
         <header>
           <button className="icon menu" onClick={() => setMobile(true)}><Menu /></button>
-          <div className="crumb">{active} <ChevronRight /> <span>AWD workspace</span></div>
+          <div className="crumb">{active} <ChevronRight /> <span>AWD Command</span></div>
           <div className="headerActions">
             <div className="avatar">{currentUser?.email?.[0]?.toUpperCase() || "A"}</div>
           </div>
@@ -113,9 +121,9 @@ function App() {
         <div className="content">
           <div className="welcome">
             <div>
-              <span className="eyebrow">AWD PLATFORM</span>
-              <h1>Build something meaningful.</h1>
-              <p>Everything you need to think, create and automate — in one calm workspace.</p>
+              <span className="eyebrow">WORKSPACE CERDAS AWD</span>
+              <h1>Bangun sesuatu yang bermakna.</h1>
+              <p>Platform terintegrasi untuk berpikir, berkreasi, dan otomasi dalam satu kendali.</p>
             </div>
           </div>
 
@@ -123,7 +131,7 @@ function App() {
             <div className="aiTop" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div className="aiTitle">
                 <div className="aiIcon"><Sparkles /></div>
-                <div><b>AWD Command Center</b><small>Intelligent multi-model system</small></div>
+                <div><b>AWD Command Center</b><small>Model aktif bawaan: ChatGPT-Style</small></div>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -134,7 +142,7 @@ function App() {
                     background: "#181b2a",
                     color: "#fff",
                     border: "1px solid rgba(255,255,255,0.15)",
-                    padding: "6px 12px",
+                    padding: "7px 12px",
                     borderRadius: "8px",
                     outline: "none",
                     fontSize: "13px"
@@ -147,7 +155,7 @@ function App() {
 
                 <button
                   onClick={() => setShowCustomModel(!showCustomModel)}
-                  title="Custom / Combo Model ID"
+                  title="Ketik Model ID Lainnya"
                   style={{
                     background: showCustomModel ? "#6366f1" : "rgba(255,255,255,0.08)",
                     border: "none",
@@ -168,7 +176,7 @@ function App() {
               <div style={{ padding: "8px 0" }}>
                 <input
                   type="text"
-                  placeholder="Masukkan Model ID kustom (contoh: Comku)"
+                  placeholder="Ketik ID model lainnya (misal: ag/gemini-pro-agent)"
                   value={selectedModel}
                   onChange={e => setSelectedModel(e.target.value)}
                   style={{
@@ -189,17 +197,17 @@ function App() {
               id="command"
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
-              placeholder="Tell AWD what you want to accomplish..."
+              placeholder="Beritahu AWD apa yang ingin Anda kerjakan..."
             />
 
             <div className="aiBottom">
               <div className="chips">
-                <button onClick={() => setPrompt("Buatkan ringkasan singkat dalam 3 poin: ")}>Summarize</button>
-                <button onClick={() => setPrompt("Rancang arsitektur sistem untuk: ")}>System Design</button>
-                <button onClick={() => setPrompt("Analisis performa kode berikut: ")}>Code Audit</button>
+                <button onClick={() => setPrompt("Ringkas inti bahasan ini: ")}>Ringkas</button>
+                <button onClick={() => setPrompt("Buat konsep arsitektur sistem untuk: ")}>Desain Sistem</button>
+                <button onClick={() => setPrompt("Analisis dan optimasi kode ini: ")}>Audit Kode</button>
               </div>
               <button className="run" onClick={handleRunAi} disabled={aiLoading}>
-                {aiLoading ? "Thinking..." : "Run"} <ArrowUpRight />
+                {aiLoading ? "Memproses..." : "Run"} <ArrowUpRight />
               </button>
             </div>
 
@@ -215,7 +223,7 @@ function App() {
                 whiteSpace: "pre-wrap"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", color: "#818cf8", fontSize: "12px", fontWeight: "600" }}>
-                  <Bot size={14} /> Output ({selectedModel}):
+                  <Bot size={14} /> Respon AWD ({availableModels.find(m => m.id === selectedModel)?.label || selectedModel}):
                 </div>
                 {aiResponse}
               </div>
