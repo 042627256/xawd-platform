@@ -1,8 +1,8 @@
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
-  NINE_ROUTER_API_KEY?: string;
-  NINE_ROUTER_BASE_URL?: string;
+  NINE_ROUTER_API_KEY: string;
+  NINE_ROUTER_BASE_URL: string;
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -29,7 +29,6 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Health
     if (url.pathname === "/api/health") {
       try {
         const result = await env.DB.prepare("SELECT 1 as alive").first();
@@ -42,7 +41,6 @@ export default {
       }
     }
 
-    // Register
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
       try {
         const { email, password } = await request.json() as any;
@@ -71,7 +69,6 @@ export default {
       }
     }
 
-    // Login
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try {
         const { email, password } = await request.json() as any;
@@ -104,7 +101,6 @@ export default {
       }
     }
 
-    // Me
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       try {
         const cookies = parseCookies(request.headers.get("Cookie"));
@@ -126,7 +122,6 @@ export default {
       }
     }
 
-    // Logout
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
       const cookies = parseCookies(request.headers.get("Cookie"));
       const sessionId = cookies["session_id"];
@@ -138,32 +133,7 @@ export default {
       return new Response(JSON.stringify({ success: true }), { status: 200, headers });
     }
 
-    // Models List dari 9router
-    if (url.pathname === "/api/ai/models" && request.method === "GET") {
-      try {
-        const apiKey = env.NINE_ROUTER_API_KEY;
-        const baseUrl = env.NINE_ROUTER_BASE_URL || "https://api.9router.com/v1";
-        const cleanBase = baseUrl.replace(/\/+$/, "");
-
-        const res = await fetch(`${cleanBase}/models`, {
-          headers: { "Authorization": `Bearer ${apiKey}` }
-        });
-
-        if (!res.ok) {
-          return new Response(JSON.stringify({ data: [{ id: "default" }] }), { status: 200, headers: { "Content-Type": "application/json" } });
-        }
-
-        const data = await res.json();
-        return new Response(JSON.stringify(data), {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        });
-      } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-      }
-    }
-
-    // Run AI Inference
+    // Endpoint Eksekusi AI AWD (Parsing response JSON maupun SSE Stream)
     if (url.pathname === "/api/ai/run" && request.method === "POST") {
       try {
         const { prompt, model } = await request.json() as any;
@@ -172,7 +142,7 @@ export default {
         }
 
         const apiKey = env.NINE_ROUTER_API_KEY;
-        const baseUrl = env.NINE_ROUTER_BASE_URL || "https://api.9router.com/v1";
+        const baseUrl = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
         const cleanBase = baseUrl.replace(/\/+$/, "");
 
         const response = await fetch(`${cleanBase}/chat/completions`, {
@@ -183,14 +153,48 @@ export default {
           },
           body: JSON.stringify({
             model: model || "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }]
+            messages: [{ role: "user", content: prompt }],
+            stream: false
           })
         });
 
-        const data: any = await response.json();
-        const reply = data.choices?.[0]?.message?.content || data.error?.message || JSON.stringify(data);
+        const rawText = await response.text();
 
-        return new Response(JSON.stringify({ reply }), {
+        // 1. Parsing jika response JSON standar
+        try {
+          const parsed = JSON.parse(rawText);
+          const reply = parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.error?.message;
+          if (reply) {
+            return new Response(JSON.stringify({ reply }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
+        } catch (_) {}
+
+        // 2. Parsing jika fallback format SSE (data: {...})
+        if (rawText.includes("data:")) {
+          let accumulated = "";
+          const lines = rawText.split("\n");
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+              try {
+                const chunkJson = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+                const content = chunkJson.choices?.[0]?.delta?.content || chunkJson.choices?.[0]?.text || "";
+                accumulated += content;
+              } catch (_) {}
+            }
+          }
+          if (accumulated.trim().length > 0) {
+            return new Response(JSON.stringify({ reply: accumulated }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
+        }
+
+        return new Response(JSON.stringify({ reply: rawText }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });
