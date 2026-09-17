@@ -70,9 +70,9 @@ export default function App() {
         })
       });
       const data = await res.json();
-      setReply(data.reply || data.error || 'Tidak ada respons.');
+      setReply(data.reply || data.error || 'Tidak ada balasan.');
     } catch (err: any) {
-      setReply('Koneksi Error: ' + err.message);
+      setReply('Koneksi Gagal: ' + err.message);
     } finally {
       setIsExecuting(false);
     }
@@ -81,235 +81,237 @@ export default function App() {
   const filteredModels = models.filter(m => {
     const matchTask = selectedTask === 'text' ? true : m.task === selectedTask;
     const matchTier = selectedTier === 'all' ? true : m.tier === selectedTier;
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.id.toLowerCase().includes(search.toLowerCase()) || m.provider.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || 
+                        m.id.toLowerCase().includes(search.toLowerCase()) || 
+                        m.provider.toLowerCase().includes(search.toLowerCase());
     return matchTask && matchTier && matchSearch;
   });
 
   const activeModelDetails = models.find(m => m.id === selectedModel);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 md:p-8 selection:bg-emerald-500 selection:text-black">
-      <header className="max-w-6xl mx-auto mb-8 p-6 rounded-3xl bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-black shadow-lg shadow-emerald-500/20">
-            X
+    <div className="frame-wrapper">
+      {/* SaaS Navbar */}
+      <nav className="frame-navbar">
+        <div className="container nav-content">
+          <div className="nav-brand">
+            <span className="brand-logo">X</span>
+            <span className="brand-name">X AWD <span className="brand-highlight">Engine</span></span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              X AWD Command Center
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Live Engine
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">Universal Multi-Task Autonomous Intelligence</p>
+          <div className="nav-actions">
+            <input
+              type="password"
+              placeholder="API Token..."
+              value={customKey}
+              onChange={(e) => setCustomKey(e.target.value)}
+              className="key-input"
+            />
+            <button onClick={saveSettings} className="btn-primary-sm">Sync</button>
           </div>
         </div>
+      </nav>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="password"
-            placeholder="API Key..."
-            value={customKey}
-            onChange={(e) => setCustomKey(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-slate-900/90 border border-white/10 rounded-xl focus:border-emerald-400 focus:outline-none w-32 font-mono text-emerald-300"
-          />
-          <button
-            onClick={saveSettings}
-            className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-black hover:opacity-90 transition-all cursor-pointer"
-          >
-            Sync Keys
-          </button>
+      {/* Hero Header Frame */}
+      <header className="hero-section">
+        <div className="container text-center">
+          <span className="badge-pill">Enterprise AI Routing Cluster</span>
+          <h1 className="hero-title">High Performance Multi-Engine</h1>
+          <p className="hero-desc">
+            Orkestrasi cerdas GLM-5.3, Claude Sonnet 5, GPT-5.6 Terra, dan DeepSeek dalam satu ruang kendali modern.
+          </p>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-5 space-y-6">
-          <div className="p-6 rounded-3xl bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-xl space-y-4">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-              1. Kategori Tugas (Task Mode)
-            </h3>
-            
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'text', label: '✍️ Text & Story', desc: 'Writing, Copy, Chat' },
-                { id: 'coding', label: '💻 Coding & Dev', desc: 'Syntax, Logic, Refactor' },
-                { id: 'deep_reason', label: '🧠 Deep Reason', desc: 'Thinking, Step-by-Step' },
-                { id: 'image', label: '🎨 Image & Vision', desc: 'Visual, OCR, Multimodal' },
-                { id: 'video', label: '🎬 Video & Media', desc: 'Omni, Transcribe, Audio' }
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTask(t.id as any)}
-                  className={`p-3 rounded-2xl text-left border transition-all cursor-pointer ${
-                    selectedTask === t.id
-                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-400/50 shadow-lg shadow-emerald-500/10'
-                      : 'bg-white/5 border-white/5 hover:border-white/20 text-slate-300'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-white">{t.label}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{t.desc}</div>
-                </button>
-              ))}
-            </div>
+      {/* Main Dashboard Panel */}
+      <main className="container main-content">
+        <div className="row">
+          {/* Kolom Kiri: Pengaturan Tugas & Model */}
+          <div className="col-lg-5">
+            {/* Task Category Card */}
+            <div className="frame-card mb-4">
+              <div className="card-header-clean">
+                <span className="header-num">01</span>
+                <div>
+                  <h3 className="card-title">Kategori Tugas</h3>
+                  <p className="card-subtitle">Pilih spesialisasi model</p>
+                </div>
+              </div>
 
-            <div className="pt-2">
-              <div className="text-[11px] font-mono text-slate-400 mb-2">Tingkatan Performa (Tier):</div>
-              <div className="flex gap-2">
+              <div className="task-selector-grid">
                 {[
-                  { id: 'all', label: 'Semua' },
-                  { id: 'low', label: '🟢 Low' },
-                  { id: 'medium', label: '🟡 Mid' },
-                  { id: 'high', label: '🟣 High' }
-                ].map(tr => (
+                  { id: 'text', icon: '✍️', label: 'Text & Story', sub: 'Writing, Copy, Coretax' },
+                  { id: 'coding', icon: '💻', label: 'Coding & Dev', sub: 'Syntax, Logic, Refactor' },
+                  { id: 'deep_reason', icon: '🧠', label: 'Deep Reason', sub: 'Thinking & Mathematics' },
+                  { id: 'image', icon: '🎨', label: 'Image & Vision', sub: 'Visual & Multimodal' },
+                  { id: 'video', icon: '🎬', label: 'Video & Media', sub: 'Audio & Transcription' }
+                ].map(t => (
                   <button
-                    key={tr.id}
-                    onClick={() => setSelectedTier(tr.id as any)}
-                    className={`px-3 py-1 text-[10px] rounded-lg border font-mono transition-all cursor-pointer ${
-                      selectedTier === tr.id
-                        ? 'bg-white text-black font-bold border-white'
-                        : 'bg-white/5 text-slate-400 border-white/5 hover:border-white/20'
-                    }`}
+                    key={t.id}
+                    onClick={() => setSelectedTask(t.id as any)}
+                    className={`task-tile ${selectedTask === t.id ? 'task-tile-active' : ''}`}
                   >
-                    {tr.label}
+                    <span className="task-tile-icon">{t.icon}</span>
+                    <div className="task-tile-body">
+                      <span className="task-tile-title">{t.label}</span>
+                      <span className="task-tile-sub">{t.sub}</span>
+                    </div>
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
 
-          <div className="p-6 rounded-3xl bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-xl space-y-4 relative">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                2. Model Engine Selector
-              </span>
-              <span className="text-[10px] text-emerald-400 font-mono">
-                {models.length} Terdeteksi
-              </span>
-            </h3>
-
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full p-4 rounded-2xl bg-slate-950/80 border border-white/10 hover:border-emerald-500/40 transition-all flex items-center justify-between group cursor-pointer"
-            >
-              <div className="text-left truncate pr-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white tracking-wide">
-                    {activeModelDetails?.name || selectedModel}
-                  </span>
-                  {activeModelDetails?.isCombine && (
-                    <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-gradient-to-r from-emerald-500/30 to-teal-500/30 border border-emerald-400/40 text-emerald-300">
-                      COMBINE
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-400 font-mono mt-1 truncate">
-                  {selectedModel} • <span className="text-emerald-400 font-bold uppercase">{activeModelDetails?.tier || 'HIGH'} TIER</span>
-                </div>
-              </div>
-              <div className={`p-1.5 rounded-lg bg-white/5 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`}>
-                ▼
-              </div>
-            </button>
-
-            {isDropdownOpen && (
-              <div className="absolute z-50 left-6 right-6 top-32 p-3 rounded-2xl bg-slate-950/95 backdrop-blur-3xl border border-white/20 shadow-2xl space-y-2">
-                <input
-                  type="text"
-                  placeholder="Cari nama model..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
-                />
-
-                <div className="max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                  {filteredModels.map(m => (
+              {/* Tier Filter */}
+              <div className="tier-wrapper mt-3">
+                <label className="tier-title">Tingkatan Model (Tier):</label>
+                <div className="tier-pills">
+                  {[
+                    { id: 'all', label: 'Semua' },
+                    { id: 'low', label: '🟢 Low Tier' },
+                    { id: 'medium', label: '🟡 Mid Tier' },
+                    { id: 'high', label: '🟣 High Tier' }
+                  ].map(tr => (
                     <button
-                      key={m.id}
-                      onClick={() => {
-                        setSelectedModel(m.id);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                        selectedModel === m.id
-                          ? 'bg-emerald-500/20 border border-emerald-400/50 text-emerald-300'
-                          : 'hover:bg-white/5 border border-transparent text-slate-300'
-                      }`}
+                      key={tr.id}
+                      onClick={() => setSelectedTier(tr.id as any)}
+                      className={`tier-pill ${selectedTier === tr.id ? 'tier-pill-active' : ''}`}
                     >
-                      <div className="truncate pr-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{m.name}</span>
-                          {m.isCombine && (
-                            <span className="px-1.5 py-0.2 text-[8px] font-bold rounded bg-slate-800 border border-slate-700 text-cyan-300">
-                              COMBINE
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-mono">{m.id}</div>
-                      </div>
-                      <span className={`text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold shrink-0 ${
-                        m.tier === 'high' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                        m.tier === 'medium' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                        'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}>
-                        {m.tier}
-                      </span>
+                      {tr.label}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <div className="lg:col-span-7">
-          <div className="p-6 rounded-3xl bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-xl flex flex-col h-full space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>⚡</span> Playground Output Console
-                </h2>
-                <div className="text-[10px] text-slate-400 font-mono">
-                  Engine: <span className="text-emerald-400 font-bold">{selectedModel}</span>
+            {/* Model Selection Dropdown Card */}
+            <div className="frame-card model-dropdown-card">
+              <div className="card-header-clean">
+                <span className="header-num">02</span>
+                <div className="w-100 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h3 className="card-title">Model Selector</h3>
+                    <p className="card-subtitle">{models.length} Model Aktif Terdeteksi</p>
+                  </div>
+                  <span className="badge-count">{filteredModels.length} Tersedia</span>
                 </div>
               </div>
-              <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300">
-                Mode: {selectedTask.toUpperCase()}
-              </span>
-            </div>
 
-            <div className="relative">
-              <textarea
-                rows={4}
-                placeholder={`Masukkan prompt testing ${selectedTask}...`}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="w-full p-4 rounded-2xl bg-slate-950/70 border border-white/10 focus:border-emerald-400/60 focus:outline-none text-xs text-white placeholder-slate-500 font-mono resize-none"
-              />
-              <button
-                onClick={handleExecute}
-                disabled={isExecuting || !prompt.trim()}
-                className="absolute bottom-3 right-3 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-bold hover:opacity-90 disabled:opacity-40 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
-              >
-                {isExecuting ? 'Memproses...' : 'Uji Sekarang →'}
-              </button>
-            </div>
+              {/* Bootstrap Clean Dropdown Trigger */}
+              <div className="dropdown-container">
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="model-select-btn"
+                >
+                  <div className="model-select-info">
+                    <div className="model-select-header">
+                      <span className="model-select-name">{activeModelDetails?.name || selectedModel}</span>
+                      {activeModelDetails?.isCombine && (
+                        <span className="badge-combine">COMBINE</span>
+                      )}
+                    </div>
+                    <div className="model-select-id">{selectedModel}</div>
+                  </div>
+                  <span className="select-arrow">{isDropdownOpen ? '▲' : '▼'}</span>
+                </button>
 
-            <div className="flex-1 min-h-[280px] p-5 rounded-2xl bg-slate-950/90 border border-white/10 overflow-y-auto custom-scrollbar font-mono text-xs">
-              {reply ? (
-                <div className="text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {reply}
+                {isDropdownOpen && (
+                  <div className="model-menu-popover">
+                    <div className="popover-search">
+                      <input
+                        type="text"
+                        placeholder="Cari model GLM, Claude, GPT, DeepSeek..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="search-field"
+                      />
+                    </div>
+                    <div className="popover-scrollable">
+                      {filteredModels.map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedModel(m.id);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`model-item-row ${selectedModel === m.id ? 'model-item-selected' : ''}`}
+                        >
+                          <div className="model-item-meta">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="model-item-title">{m.name}</span>
+                              {m.isCombine && <span className="tag-combine">COMBINE</span>}
+                            </div>
+                            <span className="model-item-sub">{m.id}</span>
+                          </div>
+                          <span className={`tier-tag tag-${m.tier}`}>{m.tier.toUpperCase()}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Kolom Kanan: Playground Console Card */}
+          <div className="col-lg-7">
+            <div className="frame-card console-card">
+              <div className="card-header-clean border-bottom pb-3 mb-3">
+                <span className="header-num">03</span>
+                <div className="w-100 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h3 className="card-title">Playground Output Console</h3>
+                    <p className="card-subtitle">Active Engine: <strong className="text-primary">{selectedModel}</strong></p>
+                  </div>
+                  <span className="badge-mode-pill">{selectedTask.toUpperCase()}</span>
                 </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-600 text-xs italic">
-                  Hasil respon dari engine akan muncul di sini...
+              </div>
+
+              {/* Prompt Input Form */}
+              <div className="prompt-wrapper">
+                <textarea
+                  rows={4}
+                  placeholder={`Ketik prompt untuk pengujian task ${selectedTask}...`}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="frame-textarea"
+                />
+                <button
+                  onClick={handleExecute}
+                  disabled={isExecuting || !prompt.trim()}
+                  className="btn-execute-primary"
+                >
+                  {isExecuting ? 'Mengeksekusi...' : 'Jalankan Prompt →'}
+                </button>
+              </div>
+
+              {/* Output Response Screen */}
+              <div className="response-container mt-3">
+                <div className="response-header">
+                  <span>HASIL EKSEKUSI</span>
+                  {reply && <span className="text-success">● Sukses</span>}
                 </div>
-              )}
+                <div className="response-screen">
+                  {reply ? (
+                    <div className="response-text">{reply}</div>
+                  ) : (
+                    <div className="response-placeholder">
+                      Hasil respons dari engine X AWD akan tampil rapi di sini...
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Clean Frame Footer */}
+      <footer className="frame-footer">
+        <div className="container text-center">
+          <p className="footer-brand">X AWD Platform — Autonomous Intelligence Architecture</p>
+          <p className="footer-sub">Optimized for High Concurrency & Persona Injection</p>
+        </div>
+      </footer>
     </div>
   );
 }
