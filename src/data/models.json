@@ -444,7 +444,7 @@
     "name": "grok-4.6",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
