@@ -13,13 +13,33 @@ export default {
 
     const cors = {
       "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Credentials": "true"
     };
 
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const json = (d: any, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+
+    // Inisialisasi tabel D1 jika belum ada
+    if (env.DB) {
+      await env.DB.exec(`
+        CREATE TABLE IF NOT EXISTS xawd_agents (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          role TEXT,
+          prompt TEXT,
+          is_active INTEGER DEFAULT 0,
+          created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS xawd_vault (
+          id TEXT PRIMARY KEY,
+          type TEXT,
+          content TEXT,
+          created_at INTEGER
+        );
+      `).catch(() => {});
+    }
 
     const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
@@ -41,7 +61,31 @@ export default {
       }
     };
 
-    // Handler Webhook Telegram
+    // API CRUD AGENTS (Untuk Dashboard Web)
+    if (url.pathname === "/api/agents") {
+      if (req.method === "GET") {
+        try {
+          const { results } = await env.DB.prepare("SELECT * FROM xawd_agents ORDER BY created_at DESC").all();
+          return json({ agents: results || [] });
+        } catch (e: any) {
+          return json({ agents: [] });
+        }
+      }
+
+      if (req.method === "POST") {
+        try {
+          const { name, role, prompt } = await req.json() as any;
+          const id = "agent_" + Date.now();
+          await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
+            .bind(id, name, role, prompt, Date.now()).run();
+          return json({ success: true, id });
+        } catch (e: any) {
+          return json({ error: e.message }, 500);
+        }
+      }
+    }
+
+    // WEBHOOK TELEGRAM
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -60,7 +104,7 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          const w = "⚡ *X AWD Autonomous Engine Online*\n\nBot terhubung langsung ke 9Router AI & Cloudflare Flux.\n\n*Perintah Tersedia:*\n💬 *Chat Biasa* -> Tanya langsung ke model 9Router\n🧠 */think <topik>* -> Penalaran mendalam & evaluasi kritis\n💻 */code <tugas>* -> Pemrograman & debugging kode\n🎨 */image <deskripsi>* -> Render gambar Flux langsung ke chat";
+          const w = "⚡ *X AWD Autonomous Engine Online*\n\nBot terhubung langsung ke 9Router AI & Cloudflare Flux.\n\n*Perintah Tersedia:*\n💬 *Chat Biasa* -> Tanya langsung ke model 9Router\n🧠 */think <topik>* -> Penalaran mendalam & evaluasi kritis\n💻 */code <tugas>* -> Pemrograman & debugging kode\n🎨 */image <deskripsi>* -> Render gambar Flux";
           await sendToTelegram(chatId, w);
           return new Response("OK", { status: 200 });
         }
@@ -68,7 +112,7 @@ export default {
         if (text.startsWith("/image")) {
           const p = text.replace("/image", "").trim();
           if (!p) {
-            await sendToTelegram(chatId, "⚠️ Masukkan deskripsi gambar. Contoh: `/image mobil sport cyberpunk`");
+            await sendToTelegram(chatId, "⚠️ Masukkan deskripsi gambar. Contoh: `/image mobil balap masa depan`");
             return new Response("OK", { status: 200 });
           }
           sendAction("upload_photo");
@@ -123,7 +167,6 @@ export default {
           try {
             d = JSON.parse(rawText);
           } catch (_) {
-            // Tangani respons jika 9Router tetap mengalirkan SSE (data: {...})
             const lines = rawText.split("\n");
             let accumulated = "";
             for (const line of lines) {
@@ -135,9 +178,7 @@ export default {
                 } catch (e) {}
               }
             }
-            if (accumulated) {
-              aiReply = accumulated;
-            }
+            if (accumulated) aiReply = accumulated;
           }
 
           if (!aiReply && d) {
@@ -150,9 +191,7 @@ export default {
             }
           }
 
-          if (!aiReply) {
-            aiReply = "Respons dari 9Router tidak terbaca: " + rawText.slice(0, 300);
-          }
+          if (!aiReply) aiReply = "Respons dari 9Router tidak terbaca: " + rawText.slice(0, 300);
         } catch (netErr: any) {
           aiReply = "Koneksi ke 9Router gagal: " + netErr.message;
         }
