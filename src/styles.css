@@ -2,18 +2,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
-  --synap-bg: #030712;
-  --synap-surface: rgba(15, 23, 42, 0.75);
-  --synap-border: rgba(255, 255, 255, 0.08);
-  --synap-glow: rgba(56, 189, 248, 0.25);
-  --synap-cyan: #38bdf8;
-  --synap-emerald: #10b981;
-  --synap-violet: #8b5cf6;
+  --bg-core: #030712;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(56, 189, 248, 0.35);
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #10b981;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
 }
 
 * { box-sizing: border-box; }
 body {
-  background-color: var(--synap-bg);
+  background-color: var(--bg-core);
   color: #f8fafc;
   font-family: 'Plus Jakarta Sans', sans-serif;
   min-height: 100vh;
@@ -23,22 +24,23 @@ body {
 .font-mono { font-family: 'JetBrains Mono', monospace; }
 
 .glass-box {
-  background: var(--synap-surface);
-  border: 1px solid var(--synap-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
 }
 
 .glass-box::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--synap-cyan), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
 }
 
-.btn-synap {
+.btn-primary-glow {
   background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #8b5cf6 100%);
   border: none;
   color: #fff;
@@ -46,19 +48,21 @@ body {
   border-radius: 12px;
   transition: all 0.2s;
 }
-.btn-synap:hover {
+.btn-primary-glow:hover {
   opacity: 0.95;
   transform: translateY(-1px);
   box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
 }
 
-.btn-ghost {
+.btn-outline-glow {
   background: rgba(30, 41, 59, 0.6);
-  border: 1px solid var(--synap-border);
+  border: 1px solid var(--border-subtle);
   color: #f8fafc;
   border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
 }
-.btn-ghost:hover {
+.btn-outline-glow:hover {
   background: rgba(51, 65, 85, 0.8);
   border-color: rgba(255, 255, 255, 0.2);
 }
