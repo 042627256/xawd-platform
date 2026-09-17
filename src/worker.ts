@@ -25,6 +25,10 @@ export default {
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
     const nineKey = env.NINE_ROUTER_API_KEY || "comku";
 
+    // MEMORI PERMANEN X AWD (Coretax Grounding Context)
+    const CORE_SYSTEM_MEMORY = `__CORETAX_MEMORY_PLACEHOLDER__`;
+
+    // Inisialisasi Database D1
     const initDb = async () => {
       if (!env.DB) return;
       try {
@@ -41,6 +45,7 @@ export default {
       } catch (_) {}
     };
 
+    // 1. ENDPOINT STATUS TELEGRAM DASHBOARD
     if (url.pathname === "/api/telegram/status") {
       try {
         const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
@@ -55,6 +60,7 @@ export default {
       }
     }
 
+    // 2. ENDPOINT AKTIVASI AGENT DARI DASHBOARD
     if (url.pathname.includes("/activate") || (url.pathname.startsWith("/api/agents/") && req.method === "PUT")) {
       await initDb();
       try {
@@ -69,12 +75,13 @@ export default {
           await env.DB.prepare("UPDATE xawd_agents SET is_active = 0").run().catch(() => {});
           await env.DB.prepare("UPDATE xawd_agents SET is_active = 1 WHERE id = ?").bind(agentId).run().catch(() => {});
         }
-        return json({ success: true, message: "Agent aktif sebagai otak bot Telegram!", id: agentId });
+        return json({ success: true, message: "Agent diaktifkan sebagai otak Telegram!", id: agentId });
       } catch (err: any) {
         return json({ success: true, id: agentId, warning: err.message });
       }
     }
 
+    // 3. ENDPOINT CRUD AGENTS
     if (url.pathname === "/api/agents") {
       await initDb();
       if (req.method === "GET") {
@@ -95,16 +102,16 @@ export default {
           if (env.DB) {
             await env.DB.prepare("UPDATE xawd_agents SET is_active = 0").run().catch(() => {});
             await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
-              .bind(id, name, role, prompt, Date.now()).run();
+              .bind(id, name, role, prompt, 1, Date.now()).run();
           }
-          return json({ success: true, id, message: "Agent tersimpan dan aktif!" });
+          return json({ success: true, id, message: "Agent tersimpan dan langsung aktif!" });
         } catch (err: any) {
           return json({ success: true, id: "fallback_" + Date.now(), warning: err.message });
         }
       }
     }
 
-    // TELEGRAM WEBHOOK
+    // 4. WEBHOOK TELEGRAM
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -123,84 +130,28 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          const menu = "⚡ *X AWD Engine (Multi-LLM 9Router)*\n\n" +
-            "*Pilihan Model Langsung:*\n" +
-            "• `/claude <pesan>` -> Claude Sonnet 4.6 (`ag/claude-sonnet-4-6`)\n" +
-            "• `/opus <pesan>` -> Claude Opus 4.6 Thinking (`ag/claude-opus-4-6-thinking`)\n" +
-            "• `/gpt <pesan>` -> GPT-6 Astra (`cx/gpt-6-astra`)\n" +
-            "• `/sol <pesan>` -> GPT-5.6 Sol (`cx/gpt-5.6-sol`)\n" +
-            "• `/terra <pesan>` -> GPT-5.6 Terra (`cx/gpt-5.6-terra`)\n" +
-            "• `/luna <pesan>` -> GPT-5.6 Luna (`cx/gpt-5.6-luna`)\n" +
-            "• `/think <pesan>` -> Deep Reasoning (`ag/claude-opus-4-6-thinking`)\n" +
-            "• `/code <pesan>` -> Expert Coder (`ag/gpt-oss-120b-medium`)\n" +
-            "• `/flash <pesan>` -> Respon Kilat (`ag/gemini-3.8-flash-high`)\n" +
-            "• *Chat biasa* -> Auto Router (`All` / `Comku`)\n\n" +
-            "Kirim `/models` untuk cek daftar model lengkap.";
+          const menu = "⚡ *X AWD Autonomous Engine Online*\n\n" +
+            "• *Default Model Engine*: `Comku` & `All` Router (Akses 100+ Model)\n" +
+            "• *Memory Status*: Coretax Knowledge Active\n\n" +
+            "Silakan ajukan pertanyaan seputar Coretax atau instruksi lainnya secara langsung.";
           await sendMsg(menu);
           return new Response("OK", { status: 200 });
         }
 
-        if (text === "/models") {
-          try {
-            const mRes = await fetch(nineBase + "/models", {
-              headers: { "Authorization": `Bearer ${nineKey}` }
-            });
-            const mData: any = await mRes.json();
-            const list = (mData?.data || []).map((m: any) => "• `" + m.id + "`").slice(0, 45).join("\n");
-            await sendMsg("📋 *Model Tersedia di 9Router:*\n\n" + (list || "Comku, All aktif"));
-          } catch (e: any) {
-            await sendMsg("Gagal mengambil model: " + e.message);
-          }
-          return new Response("OK", { status: 200 });
-        }
-
-        // Ambil System Prompt Agen Aktif
-        let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban cerdas, lugas, dan akurat.";
+        // Susun System Prompt: Memori Coretax + Instruksi Agent Aktif (jika ada)
+        let activePrompt = "";
         try {
           const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
-          if (activeAgent?.prompt) sysPrompt = activeAgent.prompt;
+          if (activeAgent?.prompt) activePrompt = "\n[Instruksi Tambahan]:\n" + activeAgent.prompt;
         } catch (_) {}
 
-        // Pemetaan Perintah ke ID Model Persis di 9Router
-        let targetModel = "All";
-        let cleanText = text;
+        const finalSystemPrompt = `Kamu adalah X AWD, asisten cerdas berpengetahuan tinggi.\n\n[MEMORI SISTEM CORETAX]:\n${CORE_SYSTEM_MEMORY}${activePrompt}\n\nGunakan pengetahuan di atas sebagai rujukan utama dalam menjawab pertanyaan. Jawab dengan lugas, cerdas, akurat, dan terstruktur.`;
 
-        if (text.startsWith("/claude ")) {
-          targetModel = "ag/claude-sonnet-4-6";
-          cleanText = text.replace("/claude ", "").trim();
-        } else if (text.startsWith("/opus ")) {
-          targetModel = "ag/claude-opus-4-6-thinking";
-          cleanText = text.replace("/opus ", "").trim();
-        } else if (text.startsWith("/gpt ")) {
-          targetModel = "cx/gpt-6-astra";
-          cleanText = text.replace("/gpt ", "").trim();
-        } else if (text.startsWith("/sol ")) {
-          targetModel = "cx/gpt-5.6-sol";
-          cleanText = text.replace("/sol ", "").trim();
-        } else if (text.startsWith("/terra ")) {
-          targetModel = "cx/gpt-5.6-terra";
-          cleanText = text.replace("/terra ", "").trim();
-        } else if (text.startsWith("/luna ")) {
-          targetModel = "cx/gpt-5.6-luna";
-          cleanText = text.replace("/luna ", "").trim();
-        } else if (text.startsWith("/think ")) {
-          sysPrompt += "\nLakukan penalaran langkah demi langkah secara mendalam.";
-          targetModel = "ag/claude-opus-4-6-thinking";
-          cleanText = text.replace("/think ", "").trim();
-        } else if (text.startsWith("/code ")) {
-          sysPrompt += "\nMode Pemrograman Ahli: Tulis kode modular, bersih, dan efisien.";
-          targetModel = "ag/gpt-oss-120b-medium";
-          cleanText = text.replace("/code ", "").trim();
-        } else if (text.startsWith("/flash ")) {
-          targetModel = "ag/gemini-3.8-flash-high";
-          cleanText = text.replace("/flash ", "").trim();
-        }
-
-        // Jalur Eksekusi Failover
-        const candidates = [targetModel, "Comku", "All", "cx/gpt-6-astra", "ag/gemini-3.8-flash-high"];
+        // MODEL DEFAULT: "Comku" & "All" diprioritaskan utama
+        const candidateModels = ["Comku", "All", "cx/gpt-6-astra", "ag/gemini-3.8-flash-high"];
         let aiReply = "";
 
-        for (const m of candidates) {
+        for (const m of candidateModels) {
           try {
             const r = await fetch(nineBase + "/chat/completions", {
               method: "POST",
@@ -212,8 +163,8 @@ export default {
                 model: m,
                 stream: false,
                 messages: [
-                  { role: "system", content: sysPrompt },
-                  { role: "user", content: cleanText }
+                  { role: "system", content: finalSystemPrompt },
+                  { role: "user", content: text }
                 ]
               })
             });
@@ -237,12 +188,12 @@ export default {
               if (acc) aiReply = acc;
             }
 
-            if (aiReply) break;
+            if (aiReply) break; // Berhasil dijawab oleh Comku atau All
           } catch (_) {}
         }
 
         if (!aiReply) {
-          aiReply = "Respons dari model tidak berhasil dimuat. Silakan coba lagi.";
+          aiReply = "Maaf, mesin router Comku/All sedang memproses beban tinggi. Silakan coba kembali.";
         }
 
         await sendMsg(aiReply);
