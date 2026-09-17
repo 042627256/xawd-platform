@@ -1,0 +1,802 @@
+[
+  {
+    "id": "ag/gemini-3.8-flash-high",
+    "name": "gemini-3.8-flash-high",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.8-flash-medium",
+    "name": "gemini-3.8-flash-medium",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.8-flash-low",
+    "name": "gemini-3.8-flash-low",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.8-flash",
+    "name": "gemini-3.8-flash",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.7-flash-high",
+    "name": "gemini-3.7-flash-high",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.7-flash-medium",
+    "name": "gemini-3.7-flash-medium",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.7-flash-low",
+    "name": "gemini-3.7-flash-low",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.6-flash-high",
+    "name": "gemini-3.6-flash-high",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.6-flash-medium",
+    "name": "gemini-3.6-flash-medium",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.6-flash-low",
+    "name": "gemini-3.6-flash-low",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3-flash-agent",
+    "name": "gemini-3-flash-agent",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.5-flash-low",
+    "name": "gemini-3.5-flash-low",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/gemini-3.5-flash-extra-low",
+    "name": "gemini-3.5-flash-extra-low",
+    "provider": "ag",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "ag/claude-sonnet-4-6",
+    "name": "claude-sonnet-4-6",
+    "provider": "ag",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "ag/claude-opus-4-6-thinking",
+    "name": "claude-opus-4-6-thinking",
+    "provider": "ag",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gemini/gemini-3.5-flash-lite",
+    "name": "gemini-3.5-flash-lite",
+    "provider": "gemini",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gemini/gemini-3.1-flash-lite-preview",
+    "name": "gemini-3.1-flash-lite-preview",
+    "provider": "gemini",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gemini/gemini-3-flash-preview",
+    "name": "gemini-3-flash-preview",
+    "provider": "gemini",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "cx/gpt-5.6-terra",
+    "name": "gpt-5.6-terra",
+    "provider": "cx",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "cx/gpt-5.6-terra-review",
+    "name": "gpt-5.6-terra-review",
+    "provider": "cx",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "cx/gpt-5.6-luna",
+    "name": "gpt-5.6-luna",
+    "provider": "cx",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "cx/gpt-5.5",
+    "name": "gpt-5.5",
+    "provider": "cx",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "cx/gpt-5.5-review",
+    "name": "gpt-5.5-review",
+    "provider": "cx",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/copilot-search-a",
+    "name": "copilot-search-a",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/copilot-search-b",
+    "name": "copilot-search-b",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/copilot-search-c",
+    "name": "copilot-search-c",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/exec-agent-a",
+    "name": "exec-agent-a",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/exec-agent-b",
+    "name": "exec-agent-b",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/exec-agent-c",
+    "name": "exec-agent-c",
+    "provider": "gh",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o-mini-2024-07-18",
+    "name": "gpt-4o-mini-2024-07-18",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o-2024-11-20",
+    "name": "gpt-4o-2024-11-20",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o-2024-08-06",
+    "name": "gpt-4o-2024-08-06",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4.1-2025-04-14",
+    "name": "gpt-4.1-2025-04-14",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-3.5-turbo-0613",
+    "name": "gpt-3.5-turbo-0613",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o-2024-05-13",
+    "name": "gpt-4o-2024-05-13",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4-o-preview",
+    "name": "gpt-4-o-preview",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4.1",
+    "name": "gpt-4.1",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o-mini",
+    "name": "gpt-4o-mini",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "gh/gpt-4o",
+    "name": "gpt-4o",
+    "provider": "gh",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.7-flash-medium",
+    "name": "gemini-3.7-flash-medium",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.6-flash-high",
+    "name": "gemini-3.6-flash-high",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.6-flash-medium",
+    "name": "gemini-3.6-flash-medium",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.6-flash-low",
+    "name": "gemini-3.6-flash-low",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-pro-agent",
+    "name": "gemini-pro-agent",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.1-pro-low",
+    "name": "gemini-3.1-pro-low",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3-flash",
+    "name": "gemini-3-flash",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-2.5-flash",
+    "name": "gemini-2.5-flash",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-2.5-flash-lite",
+    "name": "gemini-2.5-flash-lite",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/ag/gemini-3.1-flash-lite-preview",
+    "name": "gemini-3.1-flash-lite-preview",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cx/gpt-image-1.5",
+    "name": "gpt-image-1.5",
+    "provider": "Oc-full",
+    "task": "image",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/nemotron-3-super-120b-a12b",
+    "name": "nemotron-3-super-120b-a12b",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/llama-3.2-11b-vision-instruct",
+    "name": "llama-3.2-11b-vision-instruct",
+    "provider": "Oc-full",
+    "task": "image",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "name": "nemotron-3-nano-omni-30b-a3b-reasoning",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/riva-translate-4b-instruct-v2",
+    "name": "riva-translate-4b-instruct-v2",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/nemotron-3.5-content-safety",
+    "name": "nemotron-3.5-content-safety",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.6",
+    "name": "grok-4.6",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.5",
+    "name": "grok-4.5",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.3",
+    "name": "grok-4.3",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.20-0309-reasoning",
+    "name": "grok-4.20-0309-reasoning",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.20-0309-non-reasoning",
+    "name": "grok-4.20-0309-non-reasoning",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/xai/grok-4.20-multi-agent-0309",
+    "name": "grok-4.20-multi-agent-0309",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-5.3",
+    "name": "glm-5.3",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-5.3-flash",
+    "name": "glm-5.3-flash",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-5.1",
+    "name": "glm-5.1",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-5",
+    "name": "glm-5",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-4.7",
+    "name": "glm-4.7",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/glm/glm-4.6v",
+    "name": "glm-4.6v",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-opus-5",
+    "name": "claude-opus-5",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-sonnet-5",
+    "name": "claude-sonnet-5",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-opus-4-8",
+    "name": "claude-opus-4-8",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-opus-4-7",
+    "name": "claude-opus-4-7",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-opus-4-6",
+    "name": "claude-opus-4-6",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-sonnet-4-6",
+    "name": "claude-sonnet-4-6",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/cc/claude-haiku-4-5-20251001",
+    "name": "claude-haiku-4-5-20251001",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-full/am/free",
+    "name": "free",
+    "provider": "Oc-full",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "All-Official/minimax-m2.7",
+    "name": "minimax-m2.7",
+    "provider": "All-Official",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/google/gemini-3.5-flash",
+    "name": "gemini-3.5-flash",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/google/gemini-3.1-pro-preview",
+    "name": "gemini-3.1-pro-preview",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/google/gemini-3.1-flash-lite",
+    "name": "gemini-3.1-flash-lite",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/google/gemini-3-pro-image",
+    "name": "gemini-3-pro-image",
+    "provider": "Oc-uni",
+    "task": "image",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/x-ai/grok-4.3",
+    "name": "grok-4.3",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/deepseek/deepseek-v4-pro",
+    "name": "deepseek-v4-pro",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/deepseek/deepseek-v4-flash",
+    "name": "deepseek-v4-flash",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/z-ai/glm-5.2",
+    "name": "glm-5.2",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/z-ai/glm-5.1",
+    "name": "glm-5.1",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/minimax/minimax-m3",
+    "name": "minimax-m3",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/moonshotai/kimi-k2.7-code",
+    "name": "kimi-k2.7-code",
+    "provider": "Oc-uni",
+    "task": "coding",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/moonshotai/kimi-k3",
+    "name": "kimi-k3",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/MiniMax-M2.7",
+    "name": "MiniMax-M2.7",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/MiniMax-M3",
+    "name": "MiniMax-M3",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/claude-haiku-4-5-20251001",
+    "name": "claude-haiku-4-5-20251001",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/claude-opus-4-6",
+    "name": "claude-opus-4-6",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/claude-opus-4-7",
+    "name": "claude-opus-4-7",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/claude-opus-4-8",
+    "name": "claude-opus-4-8",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/deepseek-v4-flash",
+    "name": "deepseek-v4-flash",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/deepseek-v4-pro",
+    "name": "deepseek-v4-pro",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/gemini-3.1-pro",
+    "name": "gemini-3.1-pro",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/gemini-3.5-flash",
+    "name": "gemini-3.5-flash",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "medium",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/glm-5.1",
+    "name": "glm-5.1",
+    "provider": "Oc-uni",
+    "task": "text",
+    "tier": "high",
+    "isCombine": true
+  },
+  {
+    "id": "Oc-uni/kimi-k2.7-code",
+    "name": "kimi-k2.7-code",
+    "provider": "Oc-uni",
+    "task": "coding",
+    "tier": "medium",
+    "isCombine": true
+  }
+]
