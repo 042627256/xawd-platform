@@ -68,7 +68,7 @@ export default {
 
         const chatId = msg.chat.id;
         const text = (msg.text || "").trim();
-        const botToken = await getConfig("bot_token");
+        const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
         if (!botToken) return new Response("No Bot Token", { status: 200 });
 
         const sendMsg = async (t: string) => {
@@ -188,7 +188,7 @@ export default {
 
     // 2. STATUS TELEGRAM & CLUSTER INFO (Web Reader Tanpa Form Token)
     if (url.pathname === "/api/telegram/info" && req.method === "GET") {
-      const token = await getConfig("bot_token");
+      const token = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
       const chatId = await getConfig("chat_id");
       if (!token) return json({ connected: false });
 
