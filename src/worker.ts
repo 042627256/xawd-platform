@@ -17,6 +17,44 @@ function json(data: any, status = 200) {
   });
 }
 
+// Parser cerdas: mendukung JSON biasa dan chunk stream SSE
+function parseUpstreamResponse(text: string): string {
+  if (!text) return "";
+
+  // 1. Coba parse JSON reguler
+  try {
+    const data = JSON.parse(text);
+    if (data?.choices?.[0]?.message?.content) {
+      return data.choices[0].message.content;
+    }
+    if (data?.choices?.[0]?.delta?.content) {
+      return data.choices[0].delta.content;
+    }
+  } catch (_) {}
+
+  // 2. Parse SSE Stream Chunk (data: { ... })
+  if (text.includes("data:")) {
+    let combined = "";
+    const lines = text.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+        try {
+          const jsonStr = trimmed.replace(/^data:\s*/, "");
+          const chunk = JSON.parse(jsonStr);
+          const delta = chunk?.choices?.[0]?.delta?.content || "";
+          combined += delta;
+        } catch (_) {}
+      }
+    }
+    if (combined.trim()) {
+      return combined.trim();
+    }
+  }
+
+  return "";
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -52,7 +90,6 @@ export default {
         let finalModel = "";
         let detailedError = "";
 
-        // Payload murni tanpa system instruction / memory
         const pureMessages = [
           { role: "user", content: prompt }
         ];
@@ -61,7 +98,7 @@ export default {
           for (const apiKey of PRIMARY_KEYS) {
             try {
               const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 20000);
+              const timer = setTimeout(() => controller.abort(), 25000);
 
               const res = await fetch(`${TARGET_BASE}/chat/completions`, {
                 method: "POST",
@@ -72,23 +109,25 @@ export default {
                 body: JSON.stringify({
                   model: target,
                   messages: pureMessages,
-                  temperature: 0.7
+                  temperature: 0.7,
+                  stream: false
                 }),
                 signal: controller.signal
               });
               clearTimeout(timer);
 
-              const text = await res.text();
-              let parsed: any = null;
-              try { parsed = JSON.parse(text); } catch (_) {}
+              const rawText = await res.text();
+              const extractedText = parseUpstreamResponse(rawText);
 
-              if (res.ok && parsed?.choices?.[0]?.message?.content) {
-                finalReply = parsed.choices[0].message.content;
+              if (res.ok && extractedText) {
+                finalReply = extractedText;
                 finalModel = target;
                 break;
               } else {
-                const msg = parsed?.error?.message || text;
-                detailedError = `[${target}] HTTP ${res.status}: ${msg}`;
+                let parsedErr: any = null;
+                try { parsedErr = JSON.parse(rawText); } catch (_) {}
+                const errMsg = parsedErr?.error?.message || extractedText || rawText;
+                detailedError = `[${target}] HTTP ${res.status}: ${errMsg}`;
               }
             } catch (e: any) {
               detailedError = `[${target}] Error: ${e.message}`;
@@ -107,6 +146,6 @@ export default {
       }
     }
 
-    return json({ message: "X AWD Core Engine Online (Clean Mode)" });
+    return json({ message: "X AWD Core Engine Online (Stream-Parser Active)" });
   }
 };
