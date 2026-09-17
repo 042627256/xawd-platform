@@ -37,6 +37,7 @@ export default {
     const targetKey = request.headers.get("x-custom-key") || env.DEFAULT_UPSTREAM_KEY || "comku";
     const targetBase = request.headers.get("x-custom-base") || env.DEFAULT_UPSTREAM_BASE || "https://9rxawd.up.railway.app/v1";
 
+    // 1. Endpoint Models
     if (url.pathname === "/api/models") {
       try {
         const upstream = await fetch(`${targetBase}/models`, {
@@ -44,15 +45,29 @@ export default {
         });
         if (upstream.ok) {
           const data: any = await upstream.json();
-          if (Array.isArray(data.data)) {
-            const models = data.data.map((m: any) => ({
-              id: m.id,
-              name: m.id.split("/").pop() || m.id,
-              provider: m.id.includes("/") ? m.id.split("/")[0] : "engine",
-              task: m.id.includes("code") ? "coding" : (m.id.includes("image") || m.id.includes("vision")) ? "image" : "text",
-              tier: m.id.includes("glm-5") || m.id.includes("gpt") || m.id.includes("claude") ? "high" : "medium",
-              isCombine: true
-            }));
+          if (Array.isArray(data.data) && data.data.length > 0) {
+            const models = data.data.map((m: any) => {
+              const id = m.id;
+              const lower = id.toLowerCase();
+              let task = "text";
+              if (lower.includes("code") || lower.includes("coder")) task = "coding";
+              else if (lower.includes("reason") || lower.includes("r1")) task = "deep_reason";
+              else if (lower.includes("image") || lower.includes("vision")) task = "image";
+              else if (lower.includes("video") || lower.includes("audio")) task = "video";
+
+              let tier = "medium";
+              if (lower.includes("mini") || lower.includes("flash") || lower.includes("lite") || lower.includes("small")) tier = "low";
+              else if (lower.includes("gpt-5") || lower.includes("sonnet") || lower.includes("glm-5") || lower.includes("pro")) tier = "high";
+
+              return {
+                id,
+                name: id.split("/").pop() || id,
+                provider: id.includes("/") ? id.split("/")[0] : "engine",
+                task,
+                tier,
+                isCombine: true
+              };
+            });
             return json({ success: true, count: models.length, models });
           }
         }
@@ -60,19 +75,26 @@ export default {
       return json({ success: true, count: 0, models: [] });
     }
 
+    // 2. Endpoint Playground Execute: Failover Berlapis Tahan Limit
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
         const { model, prompt } = body;
 
-        const queue = [
+        // Antrean failover fleksibel (prioritaskan model yang dipilih, lalu model yang tadi sore aktif)
+        const candidateQueue = [
           model,
-          "Harbor-max/gpt-5.6-terra",
+          "Oc-full/glm/glm-5.3",
           "Oc-uni/gemini-3.5-flash",
+          "Harbor-max/gpt-5.6-terra",
+          "Oc-uni/z-ai/glm-5.2",
+          "Oc-uni/kimi-k2.6",
           "Oc-uni/gemini-3.1-pro",
-          "Oc-uni/glm-5.1",
-          "Oc-uni/kimi-k2.6"
+          "Oc-full/cc/claude-sonnet-5"
         ].filter(Boolean);
+
+        // Hapus duplikat dalam antrean
+        const queue = [...new Set(candidateQueue)];
 
         let finalReply = "";
         let finalModel = "";
@@ -80,6 +102,9 @@ export default {
 
         for (const target of queue) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 18000);
+
             const res = await fetch(`${targetBase}/chat/completions`, {
               method: "POST",
               headers: {
@@ -92,14 +117,16 @@ export default {
                   { role: "system", content: AGENT_BASE_INSTRUCTION },
                   { role: "user", content: prompt }
                 ]
-              })
+              }),
+              signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             const text = await res.text();
             let parsed: any = null;
             try { parsed = JSON.parse(text); } catch (_) {}
 
-            if (res.ok && parsed && parsed.choices?.[0]?.message?.content) {
+            if (res.ok && parsed?.choices?.[0]?.message?.content) {
               finalReply = parsed.choices[0].message.content;
               finalModel = target;
               break;
@@ -114,7 +141,7 @@ export default {
         if (finalReply) {
           return json({ success: true, model: finalModel, reply: finalReply });
         } else {
-          return json({ success: false, error: errLog || "Semua antrean upstream sedang limit." }, 500);
+          return json({ success: false, error: errLog || "Semua upstream sedang sibuk, silakan ulangi." }, 500);
         }
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
