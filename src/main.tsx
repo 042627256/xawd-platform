@@ -42,7 +42,7 @@ function App() {
   const [generatedKey, setGeneratedKey] = useState("");
 
   useEffect(() => {
-    fetch("https://api.xawd.my.id/api/auth/me")
+    fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/auth/me")
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
         setCurrentUser(data.user);
@@ -53,8 +53,8 @@ function App() {
   }, []);
 
   const loadAllData = () => {
-    fetch("https://api.xawd.my.id/api/referrals").then(res => res.json()).then(setReferralData).catch(() => {});
-    fetch("https://api.xawd.my.id/api/developer/keys").then(res => res.json()).then(data => setApiKeys(data.keys || [])).catch(() => {});
+    fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/referrals").then(res => res.json()).then(setReferralData).catch(() => {});
+    fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/developer/keys").then(res => res.json()).then(data => setApiKeys(data.keys || [])).catch(() => {});
   };
 
   const handleExecute = async () => {
@@ -65,7 +65,7 @@ function App() {
 
     try {
       if (mode === "text") {
-        const res = await fetch("https://api.xawd.my.id/api/ai/run", {
+        const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/ai/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" }, credentials: "include",
           body: JSON.stringify({ prompt, model: selectedModel })
@@ -73,7 +73,7 @@ function App() {
         const data = await res.json();
         setAiResponse(data.reply || data.error || "Tidak ada respons diterima.");
       } else {
-        const res = await fetch("https://api.xawd.my.id/api/ai/image", {
+        const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/ai/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" }, credentials: "include",
           body: JSON.stringify({ prompt })
@@ -93,7 +93,7 @@ function App() {
   const handleQuickLogin = async () => {
     if (!authEmail.trim()) return;
     try {
-      const res = await fetch("https://api.xawd.my.id/api/auth/quick-login", {
+      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/auth/quick-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ email: authEmail })
@@ -113,7 +113,7 @@ function App() {
     }
     setCheckoutLoading(true);
     try {
-      const res = await fetch("https://api.xawd.my.id/api/billing/checkout", {
+      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ planTier })
@@ -135,7 +135,7 @@ function App() {
     }
     if (!newKeyName.trim()) return;
     try {
-      const res = await fetch("https://api.xawd.my.id/api/developer/keys", {
+      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/developer/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ name: newKeyName })
@@ -223,7 +223,7 @@ function App() {
               <div><b>{currentUser?.email?.split("@")[0] || "Guest"}</b><small style={{ color: currentUser ? "#10b981" : "var(--text-muted)", display: "block" }}>{currentUser ? "Terautentikasi" : "Belum Login"}</small></div>
             </div>
             {currentUser && (
-              <button onClick={() => fetch("https://api.xawd.my.id/api/auth/logout", { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "var(--text-muted)" }}><LogOut size={16} /></button>
+              <button onClick={() => fetch("https://api.xawd.my.idhttps://api.xawd.my.id/api/auth/logout", { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "var(--text-muted)" }}><LogOut size={16} /></button>
             )}
           </div>
         </div>
