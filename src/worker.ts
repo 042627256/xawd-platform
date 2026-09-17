@@ -1,4 +1,4 @@
-const TELEGRAM_BOT_TOKEN = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
+const TELEGRAM_BOT_TOKEN = "7963385732:AAH0pP2_m8iO2yB6wUq-tqTj0b_r6G7Q1s0";
 
 const PRIMARY_KEYS = [
   "sk-6e4c5defb3de6300-twi7qt-24c79688",
@@ -29,13 +29,12 @@ function parseUpstreamResponse(text: string): string {
 
   if (text.includes("data:")) {
     let combined = "";
-    const lines = text.split("
-");
+    const lines = text.split(/\r?\n/);
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
         try {
-          const chunk = JSON.parse(trimmed.replace(/^data:s*/, ""));
+          const chunk = JSON.parse(trimmed.replace(/^data:\s*/, ""));
           combined += chunk?.choices?.[0]?.delta?.content || "";
         } catch (_) {}
       }
@@ -111,7 +110,7 @@ export default {
       });
     }
 
-    // 1. Endpoint Playground Web
+    // 1. Endpoint Web App Playground
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
@@ -127,7 +126,7 @@ export default {
       }
     }
 
-    // 2. Endpoint Webhook Telegram (/api/telegram/webhook)
+    // 2. Endpoint Webhook Telegram
     if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
       try {
         const update: any = await request.json();
@@ -140,7 +139,6 @@ export default {
             return json({ ok: true });
           }
 
-          // Proses balasan via AI cluster
           const reply = await executeAI([{ role: "user", content: userText }]);
           await sendTelegramMessage(chatId, reply);
         }
@@ -148,6 +146,6 @@ export default {
       return json({ ok: true });
     }
 
-    return json({ message: "X AWD Core Engine + Telegram Bot Connected" });
+    return json({ message: "X AWD Core Engine + Telegram Connected" });
   }
 };
