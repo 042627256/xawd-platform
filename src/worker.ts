@@ -79,24 +79,25 @@ async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-
       } catch (_) {}
     }
   }
-  return "Maaf, server AI sedang mengalami antrean. Silakan coba lagi.";
+  return "Maaf, antrean model AI sedang padat. Silakan kirim pesan Anda kembali.";
 }
 
 async function sendTelegramMessage(chatId: number, text: string) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: "Markdown"
-    })
-  });
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text
+      })
+    });
+  } catch (_) {}
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
@@ -126,23 +127,44 @@ export default {
       }
     }
 
-    // 2. Endpoint Webhook Telegram
+    // 2. Endpoint Webhook Telegram (Background Execution via ctx.waitUntil)
     if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
       try {
         const update: any = await request.json();
         if (update?.message?.text) {
           const chatId = update.message.chat.id;
-          const userText = update.message.text;
+          const userText = update.message.text.trim();
 
-          if (userText === "/start") {
-            await sendTelegramMessage(chatId, "Halo! Saya bot asisten cerdas X AWD. Kirimkan pertanyaan atau instruksi Anda.");
-            return json({ ok: true });
+          const task = (async () => {
+            if (userText.startsWith("/start")) {
+              await sendTelegramMessage(
+                chatId,
+                "Halo! Saya bot asisten cerdas X AWD.\n\nKetik pesan teks apa saja untuk mulai berinteraksi."
+              );
+              return;
+            }
+
+            if (userText.startsWith("/help")) {
+              await sendTelegramMessage(
+                chatId,
+                "Panduan Penggunaan Bot X AWD:\n\n1. Kirim pesan apa saja untuk langsung dijawab oleh engine AI.\n2. Akses UI lengkap di https://xawd.my.id."
+              );
+              return;
+            }
+
+            const reply = await executeAI([{ role: "user", content: userText }]);
+            await sendTelegramMessage(chatId, reply);
+          })();
+
+          if (ctx && typeof ctx.waitUntil === "function") {
+            ctx.waitUntil(task);
+          } else {
+            await task;
           }
-
-          const reply = await executeAI([{ role: "user", content: userText }]);
-          await sendTelegramMessage(chatId, reply);
         }
       } catch (_) {}
+      
+      // Balas HTTP 200 instan ke Telegram agar tidak timeout
       return json({ ok: true });
     }
 
