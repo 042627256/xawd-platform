@@ -34,8 +34,9 @@ export default {
       });
     }
 
-    const targetKey = request.headers.get("x-custom-key") || env.DEFAULT_UPSTREAM_KEY || "comku";
-    const targetBase = request.headers.get("x-custom-base") || env.DEFAULT_UPSTREAM_BASE || "https://9rxawd.up.railway.app/v1";
+    const headerKey = request.headers.get("x-custom-key");
+    const targetKey = (headerKey && headerKey !== "comku") ? headerKey : (env.DEFAULT_UPSTREAM_KEY || "comku");
+    const targetBase = env.DEFAULT_UPSTREAM_BASE || request.headers.get("x-custom-base") || "https://9rxawd.up.railway.app/v1";
 
     // 1. Endpoint Models
     if (url.pathname === "/api/models") {
@@ -46,64 +47,41 @@ export default {
         if (upstream.ok) {
           const data: any = await upstream.json();
           if (Array.isArray(data.data) && data.data.length > 0) {
-            const models = data.data.map((m: any) => {
-              const id = m.id;
-              const lower = id.toLowerCase();
-              let task = "text";
-              if (lower.includes("code") || lower.includes("coder")) task = "coding";
-              else if (lower.includes("reason") || lower.includes("r1")) task = "deep_reason";
-              else if (lower.includes("image") || lower.includes("vision")) task = "image";
-              else if (lower.includes("video") || lower.includes("audio")) task = "video";
-
-              let tier = "medium";
-              if (lower.includes("mini") || lower.includes("flash") || lower.includes("lite") || lower.includes("small")) tier = "low";
-              else if (lower.includes("gpt-5") || lower.includes("sonnet") || lower.includes("glm-5") || lower.includes("pro")) tier = "high";
-
-              return {
-                id,
-                name: id.split("/").pop() || id,
-                provider: id.includes("/") ? id.split("/")[0] : "engine",
-                task,
-                tier,
-                isCombine: true
-              };
-            });
-            return json({ success: true, count: models.length, models });
+            return json({ success: true, count: data.data.length, models: data.data });
           }
         }
       } catch (_) {}
       return json({ success: true, count: 0, models: [] });
     }
 
-    // 2. Endpoint Playground Execute: Failover Berlapis Tahan Limit
+    // 2. Endpoint Playground: Failover ke model-model aktif yang terbukti menyala
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
         const { model, prompt } = body;
 
-        // Antrean failover fleksibel (prioritaskan model yang dipilih, lalu model yang tadi sore aktif)
-        const candidateQueue = [
+        // Antrean failover berlapis dari model terverifikasi aktif
+        const queue = [
           model,
+          "ag/gemini-3.8-flash-medium",
+          "ag/gemini-3.8-flash-low",
+          "ag/gemini-3.8-flash-high",
           "Oc-full/glm/glm-5.3",
-          "Oc-uni/gemini-3.5-flash",
-          "Harbor-max/gpt-5.6-terra",
-          "Oc-uni/z-ai/glm-5.2",
-          "Oc-uni/kimi-k2.6",
-          "Oc-uni/gemini-3.1-pro",
-          "Oc-full/cc/claude-sonnet-5"
+          "cx/gpt-5.6-terra",
+          "gh/gpt-4o-mini",
+          "gemini/gemini-3.5-flash-lite",
+          "Oc-uni/kimi-k2.7-code"
         ].filter(Boolean);
 
-        // Hapus duplikat dalam antrean
-        const queue = [...new Set(candidateQueue)];
-
+        const uniqueQueue = [...new Set(queue)];
         let finalReply = "";
         let finalModel = "";
         let errLog = "";
 
-        for (const target of queue) {
+        for (const target of uniqueQueue) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 18000);
+            const timer = setTimeout(() => controller.abort(), 18000);
 
             const res = await fetch(`${targetBase}/chat/completions`, {
               method: "POST",
@@ -120,7 +98,7 @@ export default {
               }),
               signal: controller.signal
             });
-            clearTimeout(timeoutId);
+            clearTimeout(timer);
 
             const text = await res.text();
             let parsed: any = null;
@@ -141,13 +119,13 @@ export default {
         if (finalReply) {
           return json({ success: true, model: finalModel, reply: finalReply });
         } else {
-          return json({ success: false, error: errLog || "Semua upstream sedang sibuk, silakan ulangi." }, 500);
+          return json({ success: false, error: errLog || "Semua antrean upstream sedang limit." }, 500);
         }
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
       }
     }
 
-    return json({ message: "X AWD Core Worker Active" });
+    return json({ message: "X AWD Core Engine Running" });
   }
 };

@@ -83,7 +83,7 @@
     "id": "ag/gemini-3-flash-agent",
     "name": "gemini-3-flash-agent",
     "provider": "ag",
-    "task": "text",
+    "task": "coding",
     "tier": "low",
     "isCombine": true
   },
@@ -211,7 +211,7 @@
     "id": "gh/exec-agent-a",
     "name": "exec-agent-a",
     "provider": "gh",
-    "task": "text",
+    "task": "coding",
     "tier": "medium",
     "isCombine": true
   },
@@ -219,7 +219,7 @@
     "id": "gh/exec-agent-b",
     "name": "exec-agent-b",
     "provider": "gh",
-    "task": "text",
+    "task": "coding",
     "tier": "medium",
     "isCombine": true
   },
@@ -227,7 +227,7 @@
     "id": "gh/exec-agent-c",
     "name": "exec-agent-c",
     "provider": "gh",
-    "task": "text",
+    "task": "coding",
     "tier": "medium",
     "isCombine": true
   },
@@ -244,7 +244,7 @@
     "name": "gpt-4o-2024-11-20",
     "provider": "gh",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -252,7 +252,7 @@
     "name": "gpt-4o-2024-08-06",
     "provider": "gh",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -276,7 +276,7 @@
     "name": "gpt-4o-2024-05-13",
     "provider": "gh",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -308,7 +308,7 @@
     "name": "gpt-4o",
     "provider": "gh",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -347,7 +347,7 @@
     "id": "Oc-full/ag/gemini-pro-agent",
     "name": "gemini-pro-agent",
     "provider": "Oc-full",
-    "task": "text",
+    "task": "coding",
     "tier": "low",
     "isCombine": true
   },
@@ -403,8 +403,8 @@
     "id": "Oc-full/am/nemotron-3-super-120b-a12b",
     "name": "nemotron-3-super-120b-a12b",
     "provider": "Oc-full",
-    "task": "text",
-    "tier": "medium",
+    "task": "deep_reason",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -427,7 +427,7 @@
     "id": "Oc-full/am/riva-translate-4b-instruct-v2",
     "name": "riva-translate-4b-instruct-v2",
     "provider": "Oc-full",
-    "task": "text",
+    "task": "video",
     "tier": "medium",
     "isCombine": true
   },
@@ -435,7 +435,7 @@
     "id": "Oc-full/am/nemotron-3.5-content-safety",
     "name": "nemotron-3.5-content-safety",
     "provider": "Oc-full",
-    "task": "text",
+    "task": "deep_reason",
     "tier": "medium",
     "isCombine": true
   },
@@ -444,7 +444,7 @@
     "name": "grok-4.6",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -483,7 +483,7 @@
     "id": "Oc-full/xai/grok-4.20-multi-agent-0309",
     "name": "grok-4.20-multi-agent-0309",
     "provider": "Oc-full",
-    "task": "text",
+    "task": "coding",
     "tier": "medium",
     "isCombine": true
   },
@@ -500,7 +500,7 @@
     "name": "glm-5.3-flash",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "low",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -508,7 +508,7 @@
     "name": "glm-5.1",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
@@ -516,7 +516,7 @@
     "name": "glm-5",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
@@ -596,7 +596,7 @@
     "name": "free",
     "provider": "Oc-full",
     "task": "text",
-    "tier": "medium",
+    "tier": "low",
     "isCombine": true
   },
   {
@@ -651,7 +651,7 @@
     "id": "Oc-uni/deepseek/deepseek-v4-pro",
     "name": "deepseek-v4-pro",
     "provider": "Oc-uni",
-    "task": "text",
+    "task": "deep_reason",
     "tier": "high",
     "isCombine": true
   },
@@ -659,8 +659,8 @@
     "id": "Oc-uni/deepseek/deepseek-v4-flash",
     "name": "deepseek-v4-flash",
     "provider": "Oc-uni",
-    "task": "text",
-    "tier": "low",
+    "task": "deep_reason",
+    "tier": "medium",
     "isCombine": true
   },
   {
@@ -668,7 +668,7 @@
     "name": "glm-5.2",
     "provider": "Oc-uni",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
@@ -676,7 +676,7 @@
     "name": "glm-5.1",
     "provider": "Oc-uni",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
@@ -700,7 +700,7 @@
     "name": "kimi-k3",
     "provider": "Oc-uni",
     "task": "text",
-    "tier": "medium",
+    "tier": "high",
     "isCombine": true
   },
   {
@@ -755,15 +755,15 @@
     "id": "Oc-uni/deepseek-v4-flash",
     "name": "deepseek-v4-flash",
     "provider": "Oc-uni",
-    "task": "text",
-    "tier": "low",
+    "task": "deep_reason",
+    "tier": "medium",
     "isCombine": true
   },
   {
     "id": "Oc-uni/deepseek-v4-pro",
     "name": "deepseek-v4-pro",
     "provider": "Oc-uni",
-    "task": "text",
+    "task": "deep_reason",
     "tier": "high",
     "isCombine": true
   },
@@ -788,7 +788,7 @@
     "name": "glm-5.1",
     "provider": "Oc-uni",
     "task": "text",
-    "tier": "high",
+    "tier": "medium",
     "isCombine": true
   },
   {
