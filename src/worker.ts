@@ -23,10 +23,8 @@ export default {
     const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
     const webhookUrl = "https://api.xawd.my.id/api/telegram/webhook";
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
-    // Menggunakan comku sebagai API key default
     const nineKey = env.NINE_ROUTER_API_KEY || "comku";
 
-    // Inisialisasi Skema D1
     const initDb = async () => {
       if (!env.DB) return;
       try {
@@ -43,7 +41,6 @@ export default {
       } catch (_) {}
     };
 
-    // 1. ENDPOINT STATUS TELEGRAM
     if (url.pathname === "/api/telegram/status") {
       try {
         const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
@@ -58,7 +55,6 @@ export default {
       }
     }
 
-    // 2. ENDPOINT AKTIVASI AGENT
     if (url.pathname.includes("/activate") || (url.pathname.startsWith("/api/agents/") && req.method === "PUT")) {
       await initDb();
       try {
@@ -79,7 +75,6 @@ export default {
       }
     }
 
-    // 3. ENDPOINT CRUD AGENTS
     if (url.pathname === "/api/agents") {
       await initDb();
       if (req.method === "GET") {
@@ -109,7 +104,7 @@ export default {
       }
     }
 
-    // 4. WEBHOOK TELEGRAM DENGAN MULTI-MODEL DYNAMIC ROUTING
+    // TELEGRAM WEBHOOK
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -128,78 +123,84 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          const menu = "⚡ *X AWD Universal Multi-Model Engine Online*\n\n" +
-            "Terhubung ke 9Router dengan API Key `comku` (100+ Model LLM).\n\n" +
-            "*Perintah & Pilihan Model:*\n" +
-            "• `/models` : Cek daftar model aktif di 9Router\n" +
-            "• `/claude <teks>` : Gunakan Claude 3.5 Sonnet / Haiku\n" +
-            "• `/gpt <teks>` : Gunakan OpenAI GPT-4o / GPT-4o-mini\n" +
-            "• `/deepseek <teks>` : Gunakan DeepSeek Coder / R1 Reasoning\n" +
-            "• `/qwen <teks>` : Gunakan Qwen 2.5 72B\n" +
-            "• `/llama <teks>` : Gunakan Llama 3.3 70B\n" +
-            "• `/think <teks>` : Mode Penalaran Logika Berlapis\n" +
-            "• `/code <teks>` : Mode Koding & Arsitektur Sistem\n" +
-            "• *Chat biasa* : Menggunakan model router pintar comku";
+          const menu = "⚡ *X AWD Engine (Multi-LLM 9Router)*\n\n" +
+            "*Pilihan Model Langsung:*\n" +
+            "• `/claude <pesan>` -> Claude Sonnet 4.6 (`ag/claude-sonnet-4-6`)\n" +
+            "• `/opus <pesan>` -> Claude Opus 4.6 Thinking (`ag/claude-opus-4-6-thinking`)\n" +
+            "• `/gpt <pesan>` -> GPT-6 Astra (`cx/gpt-6-astra`)\n" +
+            "• `/sol <pesan>` -> GPT-5.6 Sol (`cx/gpt-5.6-sol`)\n" +
+            "• `/terra <pesan>` -> GPT-5.6 Terra (`cx/gpt-5.6-terra`)\n" +
+            "• `/luna <pesan>` -> GPT-5.6 Luna (`cx/gpt-5.6-luna`)\n" +
+            "• `/think <pesan>` -> Deep Reasoning (`ag/claude-opus-4-6-thinking`)\n" +
+            "• `/code <pesan>` -> Expert Coder (`ag/gpt-oss-120b-medium`)\n" +
+            "• `/flash <pesan>` -> Respon Kilat (`ag/gemini-3.8-flash-high`)\n" +
+            "• *Chat biasa* -> Auto Router (`All` / `Comku`)\n\n" +
+            "Kirim `/models` untuk cek daftar model lengkap.";
           await sendMsg(menu);
           return new Response("OK", { status: 200 });
         }
 
-        // Cek daftar model yang terdaftar di 9Router
         if (text === "/models") {
           try {
             const mRes = await fetch(nineBase + "/models", {
               headers: { "Authorization": `Bearer ${nineKey}` }
             });
             const mData: any = await mRes.json();
-            const list = (mData?.data || []).map((m: any) => "• `" + m.id + "`").slice(0, 40).join("\n");
-            await sendMsg("📋 *Model Tersedia di 9Router (Sebagian):*\n\n" + (list || "Model default: comku aktif"));
+            const list = (mData?.data || []).map((m: any) => "• `" + m.id + "`").slice(0, 45).join("\n");
+            await sendMsg("📋 *Model Tersedia di 9Router:*\n\n" + (list || "Comku, All aktif"));
           } catch (e: any) {
-            await sendMsg("Gagal mengambil daftar model: " + e.message);
+            await sendMsg("Gagal mengambil model: " + e.message);
           }
           return new Response("OK", { status: 200 });
         }
 
-        // Ambil System Prompt dari DB jika ada
+        // Ambil System Prompt Agen Aktif
         let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban cerdas, lugas, dan akurat.";
         try {
           const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
           if (activeAgent?.prompt) sysPrompt = activeAgent.prompt;
         } catch (_) {}
 
-        // Routing Model Berdasarkan Prefix Perintah
-        let targetModel = "comku";
+        // Pemetaan Perintah ke ID Model Persis di 9Router
+        let targetModel = "All";
         let cleanText = text;
 
         if (text.startsWith("/claude ")) {
-          targetModel = "claude-3-5-sonnet";
+          targetModel = "ag/claude-sonnet-4-6";
           cleanText = text.replace("/claude ", "").trim();
+        } else if (text.startsWith("/opus ")) {
+          targetModel = "ag/claude-opus-4-6-thinking";
+          cleanText = text.replace("/opus ", "").trim();
         } else if (text.startsWith("/gpt ")) {
-          targetModel = "gpt-4o";
+          targetModel = "cx/gpt-6-astra";
           cleanText = text.replace("/gpt ", "").trim();
-        } else if (text.startsWith("/deepseek ")) {
-          targetModel = "deepseek-reasoner";
-          cleanText = text.replace("/deepseek ", "").trim();
-        } else if (text.startsWith("/qwen ")) {
-          targetModel = "qwen-2.5-72b";
-          cleanText = text.replace("/qwen ", "").trim();
-        } else if (text.startsWith("/llama ")) {
-          targetModel = "llama-3.3-70b";
-          cleanText = text.replace("/llama ", "").trim();
+        } else if (text.startsWith("/sol ")) {
+          targetModel = "cx/gpt-5.6-sol";
+          cleanText = text.replace("/sol ", "").trim();
+        } else if (text.startsWith("/terra ")) {
+          targetModel = "cx/gpt-5.6-terra";
+          cleanText = text.replace("/terra ", "").trim();
+        } else if (text.startsWith("/luna ")) {
+          targetModel = "cx/gpt-5.6-luna";
+          cleanText = text.replace("/luna ", "").trim();
         } else if (text.startsWith("/think ")) {
-          sysPrompt += "\nMode Penalaran: Analisis secara logis dan mendalam.";
-          targetModel = "deepseek-reasoner";
+          sysPrompt += "\nLakukan penalaran langkah demi langkah secara mendalam.";
+          targetModel = "ag/claude-opus-4-6-thinking";
           cleanText = text.replace("/think ", "").trim();
         } else if (text.startsWith("/code ")) {
-          sysPrompt += "\nMode Koding: Berikan solusi pemrograman bersih.";
-          targetModel = "deepseek-coder";
+          sysPrompt += "\nMode Pemrograman Ahli: Tulis kode modular, bersih, dan efisien.";
+          targetModel = "ag/gpt-oss-120b-medium";
           cleanText = text.replace("/code ", "").trim();
+        } else if (text.startsWith("/flash ")) {
+          targetModel = "ag/gemini-3.8-flash-high";
+          cleanText = text.replace("/flash ", "").trim();
         }
 
-        // Daftar failover berurutan jika model target mengalami kendala
-        const candidateModels = [targetModel, "comku", "claude-3-5-haiku", "gpt-4o-mini", "llama-3.1-8b"];
+        // Jalur Eksekusi Failover
+        const candidates = [targetModel, "Comku", "All", "cx/gpt-6-astra", "ag/gemini-3.8-flash-high"];
         let aiReply = "";
 
-        for (const m of candidateModels) {
+        for (const m of candidates) {
           try {
             const r = await fetch(nineBase + "/chat/completions", {
               method: "POST",
@@ -236,12 +237,12 @@ export default {
               if (acc) aiReply = acc;
             }
 
-            if (aiReply) break; // Berhasil mendapatkan jawaban
+            if (aiReply) break;
           } catch (_) {}
         }
 
         if (!aiReply) {
-          aiReply = "Maaf, seluruh model di 9Router sedang sibuk atau respons tidak terbaca.";
+          aiReply = "Respons dari model tidak berhasil dimuat. Silakan coba lagi.";
         }
 
         await sendMsg(aiReply);
