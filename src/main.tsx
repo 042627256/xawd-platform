@@ -17,6 +17,8 @@ const textModels = [
 function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
   const [mobile, setMobile] = useState(false);
   const [lang, setLang] = useState<string>("id");
   const [activeTab, setActiveTab] = useState("Overview");
@@ -196,6 +198,11 @@ function App() {
           <button className="icon menu" onClick={() => setMobile(true)} style={{ background: "none", border: "none", color: "#fff" }}><Menu size={20} /></button>
           <div className="crumb"><span>XAWD OS</span> <ChevronRight size={14} /> <span>{activeTab}</span></div>
           <div className="headerActions">
+            {!currentUser && (
+              <button onClick={() => setShowAuth(true)} style={{ background: "var(--accent-gradient)", border: "none", color: "#fff", padding: "6px 14px", borderRadius: "8px", fontWeight: "600", fontSize: "0.8rem", cursor: "pointer" }}>
+                Login / Daftar
+              </button>
+            )}
             <button onClick={() => setLang(lang === "en" ? "id" : "en")} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "#fff", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
               <Globe size={14} /> {lang.toUpperCase()}
             </button>

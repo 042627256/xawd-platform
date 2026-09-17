@@ -107,6 +107,22 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/auth/quick-login" && request.method === "POST") {
+      const { email } = await request.json();
+      if (!email?.trim()) return new Response(JSON.stringify({ error: "Email wajib diisi" }), { status: 400 });
+      let user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email.trim().toLowerCase()).first();
+      if (!user) {
+        const id = "usr_" + crypto.randomUUID().slice(0, 8);
+        await env.DB.prepare("INSERT INTO users (id, email, role, created_at) VALUES (?, ?, ?, ?)").bind(id, email.trim().toLowerCase(), "user", Date.now()).run();
+        user = { id, email: email.trim().toLowerCase(), role: "user" };
+      }
+      const sessionId = crypto.randomUUID();
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      await env.DB.prepare("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)").bind(sessionId, user.id, expiresAt).run();
+      const headers = new Headers({ "Content-Type": "application/json" });
+      headers.append("Set-Cookie", "session_id=" + sessionId + "; Path=/; Domain=.xawd.my.id; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000");
+      return new Response(JSON.stringify({ success: true, user }), { status: 200, headers });
+    }
     if (url.pathname === "/api/auth/me") {
       const user = await getSessionUser(request, env);
       if (!user) return new Response(JSON.stringify({ user: null }), { status: 401, headers: { "Content-Type": "application/json" } });
