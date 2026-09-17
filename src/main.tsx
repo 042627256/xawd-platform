@@ -1,229 +1,142 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowUpRight, ChevronRight, FolderKanban, LayoutDashboard, Menu,
-  Sparkles, LogOut, MessageSquareText, ImageIcon, Globe, CreditCard,
-  Users, Terminal, Copy, Check, User
+  LayoutDashboard, Terminal, Gift, Coins, Users, CreditCard,
+  Share2, Fingerprint, Radio, LogOut, FolderKanban, Copy, Check
 } from "lucide-react";
 import "./styles.css";
 
-const textModels = [
-  { id: "Comku", label: "AWD Standard (ChatGPT Style - Default)" },
-  { id: "ag/gemini-3.8-flash-high", label: "AWD Pro Ultra (Flash High-Speed)" },
-  { id: "ag/claude-opus-4-6-thinking", label: "AWD Deep Thinking (Opus)" },
-  { id: "ag/claude-sonnet-4-6", label: "AWD Sonnet Agent" }
-];
+const API = "https://api.xawd.my.id";
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [mobile, setMobile] = useState(false);
-  const [lang, setLang] = useState<string>("id");
-  const [activeTab, setActiveTab] = useState("Overview");
-
-  const [mode, setMode] = useState<"text" | "image">("text");
+  const [user, setUser] = useState<any>(null);
+  const [tab, setTab] = useState("ai");
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Comku");
-  const [aiResponse, setAiResponse] = useState("");
-  const [generatedImage, setGeneratedImage] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-
-  const [projects, setProjects] = useState<any[]>([]);
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
-  const [referralData, setReferralData] = useState<any>(null);
-  const [copiedRef, setCopiedRef] = useState(false);
-
+  const [output, setOutput] = useState("");
+  const [imgUrl, setImgUrl] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
-
-  const [activeInvoice, setActiveInvoice] = useState<any>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [generatedKey, setGeneratedKey] = useState("");
+  const [balance, setBalance] = useState(1250);
+  const [airdropClaimed, setAirdropClaimed] = useState(false);
+  const [apiKeyName, setApiKeyName] = useState("");
+  const [createdKey, setCreatedKey] = useState("");
 
   useEffect(() => {
-    fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/auth/me")
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => {
-        setCurrentUser(data.user);
-        loadAllData();
-      })
-      .catch(() => setCurrentUser(null))
-      .finally(() => setCheckingAuth(false));
+    fetch(`${API}/api/auth/me`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.user) setUser(d.user); })
+      .catch(() => {});
   }, []);
 
-  const loadAllData = () => {
-    fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/referrals").then(res => res.json()).then(setReferralData).catch(() => {});
-    fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/developer/keys").then(res => res.json()).then(data => setApiKeys(data.keys || [])).catch(() => {});
+  const handleLogin = (provider: string) => {
+    const email = authEmail.trim() || `user_${Date.now().toString(36)}@xawd.my.id`;
+    fetch(`${API}/api/auth/quick-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, provider }),
+      credentials: "include"
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          setUser(d.user);
+          setShowAuth(false);
+        } else {
+          alert(d.error || "Gagal login");
+        }
+      })
+      .catch(e => alert(e.message));
   };
 
-  const handleExecute = async () => {
+  const handleAi = async (mode: "text" | "image") => {
     if (!prompt.trim()) return;
-    setAiLoading(true);
-    setAiResponse("");
-    setGeneratedImage("");
-
+    setLoading(true);
+    setOutput("");
+    setImgUrl("");
     try {
-      if (mode === "text") {
-        const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/ai/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }, credentials: "include",
-          body: JSON.stringify({ prompt, model: selectedModel })
-        });
-        const data = await res.json();
-        setAiResponse(data.reply || data.error || "Tidak ada respons diterima.");
-      } else {
-        const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/ai/image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }, credentials: "include",
-          body: JSON.stringify({ prompt })
-        });
-        const data = await res.json();
-        if (data.imageUrl) setGeneratedImage(data.imageUrl);
-        else setAiResponse(data.error || "Gagal membuat gambar.");
-      }
-      loadAllData();
+      const ep = mode === "image" ? "/api/ai/image" : "/api/ai/run";
+      const body = mode === "image" ? { prompt } : { prompt, model: "Comku" };
+      const r = await fetch(`${API}${ep}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.imageUrl) setImgUrl(d.imageUrl);
+      else setOutput(d.reply || d.error || "Selesai");
     } catch (e: any) {
-      setAiResponse("Network error: " + e.message);
+      setOutput(e.message);
     } finally {
-      setAiLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleQuickLogin = async () => {
-    if (!authEmail.trim()) return;
+  const createKey = async () => {
+    if (!apiKeyName.trim()) return;
     try {
-      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/auth/quick-login", {
+      const r = await fetch(`${API}/api/developer/keys`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ email: authEmail })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: apiKeyName }),
+        credentials: "include"
       });
-      const d = await res.json();
-      if (d.success) window.location.reload();
-      else alert(d.error || "Gagal login");
-    } catch (e: any) {
-      alert("Error: " + e.message);
-    }
-  };
-
-  const handleCheckout = async (planTier: string) => {
-    if (!currentUser) {
-      setShowAuth(true);
-      return;
-    }
-    setCheckoutLoading(true);
-    try {
-      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ planTier })
-      });
-      const data = await res.json();
-      if (data.success) setActiveInvoice(data);
-      else alert(data.error || "Gagal checkout");
-    } catch (e: any) {
-      alert("Error: " + e.message);
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
-
-  const handleCreateApiKey = async () => {
-    if (!currentUser) {
-      setShowAuth(true);
-      return;
-    }
-    if (!newKeyName.trim()) return;
-    try {
-      const res = await fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/developer/keys", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ name: newKeyName })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setGeneratedKey(data.key);
-        setNewKeyName("");
-        loadAllData();
+      const d = await r.json();
+      if (d.success) {
+        setCreatedKey(d.key);
+        setApiKeyName("");
       }
-    } catch (e: any) {
-      alert(e.message);
-    }
+    } catch (e: any) { alert(e.message); }
   };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedRef(true);
-    setTimeout(() => setCopiedRef(false), 2000);
-  };
-
-  if (checkingAuth) {
-    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0b0f19", color: "#6366f1" }}>Memuat Lingkungan XAWD...</div>;
-  }
 
   return (
     <div className="app">
-      {/* Auth Modal */}
       {showAuth && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "20px" }}>
-          <div style={{ background: "#0f172a", border: "1px solid var(--accent-primary)", borderRadius: "16px", padding: "24px", maxWidth: "380px", width: "100%" }}>
-            <h3 style={{ color: "#fff", marginBottom: "8px" }}>Masuk / Daftar Akun</h3>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Masukkan email Anda untuk login instan atau membuat akun baru.</p>
-            <input type="email" placeholder="nama@domain.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "12px", borderRadius: "10px", marginBottom: "16px", outline: "none" }} />
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={() => setShowAuth(false)} style={{ flex: 1, padding: "10px", background: "transparent", border: "1px solid var(--border-subtle)", color: "#fff", borderRadius: "8px", cursor: "pointer" }}>Batal</button>
-              <button onClick={handleQuickLogin} style={{ flex: 1, padding: "10px", background: "var(--accent-gradient)", border: "none", color: "#fff", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Masuk</button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: 20 }}>
+          <div style={{ background: "#0f172a", border: "1px solid #3b82f6", borderRadius: 16, padding: 24, maxWidth: 380, width: "100%" }}>
+            <h3 style={{ color: "#fff" }}>Unified Multi-Auth</h3>
+            <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 12 }}>Pilih metode login atau SSO resmi:</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+              <button onClick={() => handleLogin("Google")} style={{ padding: 10, background: "#1e293b", color: "#fff", borderRadius: 8, border: "1px solid #334155", cursor: "pointer" }}>Google SSO</button>
+              <button onClick={() => handleLogin("Apple")} style={{ padding: 10, background: "#1e293b", color: "#fff", borderRadius: 8, border: "1px solid #334155", cursor: "pointer" }}>Apple ID</button>
+              <button onClick={() => handleLogin("Passkey")} style={{ padding: 10, background: "#1e293b", color: "#fff", borderRadius: 8, border: "1px solid #334155", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}><Fingerprint size={14} /> Passkey</button>
+              <button onClick={() => handleLogin("RFID")} style={{ padding: 10, background: "#1e293b", color: "#fff", borderRadius: 8, border: "1px solid #334155", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}><Radio size={14} /> RFID Scan</button>
             </div>
+            <input type="email" placeholder="nama@email.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", padding: 10, background: "#0b0f19", border: "1px solid #334155", color: "#fff", borderRadius: 8, marginBottom: 8 }} />
+            <button onClick={() => handleLogin("MagicLink")} style={{ width: "100%", padding: 10, background: "var(--accent-gradient)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>Masuk Sekarang</button>
+            <button onClick={() => setShowAuth(false)} style={{ width: "100%", background: "none", border: "none", color: "#64748b", marginTop: 8, cursor: "pointer" }}>Tutup</button>
           </div>
         </div>
       )}
 
-      {/* Checkout Invoice Modal */}
-      {activeInvoice && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }}>
-          <div style={{ background: "#0f172a", border: "1px solid var(--accent-cyan)", borderRadius: "16px", padding: "24px", maxWidth: "450px", width: "100%" }}>
-            <h3 style={{ color: "#fff", marginBottom: "8px" }}>Invoice Pembayaran {activeInvoice.planTier}</h3>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>ID Transaksi: <b>{activeInvoice.invoiceId}</b></p>
-            <div style={{ margin: "20px 0", padding: "16px", background: "rgba(99, 102, 241, 0.1)", borderRadius: "12px", border: "1px dashed var(--accent-primary)" }}>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Total Tagihan:</div>
-              <div style={{ fontSize: "1.6rem", fontWeight: "800", color: "#10b981" }}>Rp{activeInvoice.amountIdr.toLocaleString("id-ID")}</div>
-              <p style={{ fontSize: "0.8rem", color: "#cbd5e1", marginTop: "8px" }}>{activeInvoice.paymentInstructions}</p>
-            </div>
-            <button onClick={() => setActiveInvoice(null)} style={{ width: "100%", padding: "10px", background: "var(--accent-gradient)", border: "none", color: "#fff", borderRadius: "10px", fontWeight: "700", cursor: "pointer" }}>Tutup Invoice</button>
-          </div>
-        </div>
-      )}
-
-      <aside className={mobile ? "sidebar open" : "sidebar"}>
-        <div className="brand">
-          <div className="brandmark">X</div>
-          <b>XAWD</b>
-          <button className="icon close" onClick={() => setMobile(false)}>✕</button>
-        </div>
-
+      <aside className="sidebar">
+        <div className="brand"><div className="brandmark">X</div><b>XAWD OS</b></div>
         <nav className="nav">
-          <button className={`navItem ${activeTab === "Overview" ? "active" : ""}`} onClick={() => { setActiveTab("Overview"); setMobile(false); }}>
-            <LayoutDashboard size={18} /><span>Command Center</span>
-          </button>
-          <button className={`navItem ${activeTab === "Developer" ? "active" : ""}`} onClick={() => { setActiveTab("Developer"); setMobile(false); }}>
-            <Terminal size={18} /><span>Developer API</span>
-          </button>
-          <button className={`navItem ${activeTab === "Referral" ? "active" : ""}`} onClick={() => { setActiveTab("Referral"); setMobile(false); }}>
-            <Users size={18} /><span>Referral Hub</span>
-          </button>
-          <button className={`navItem ${activeTab === "Pricing" ? "active" : ""}`} onClick={() => { setActiveTab("Pricing"); setMobile(false); }}>
-            <CreditCard size={18} /><span>Paket & Billing</span>
-          </button>
+          {[
+            ["ai", "Command Center", LayoutDashboard],
+            ["airdrop", "Airdrop Portal", Gift],
+            ["token", "$AWD Ecosystem", Coins],
+            ["dev", "Developer API", Terminal],
+            ["workspaces", "Workspaces", FolderKanban],
+            ["social", "Social Hub", Share2],
+            ["ref", "Referral Hub", Users],
+            ["billing", "Paket & Billing", CreditCard]
+          ].map(([id, label, Icon]: any) => (
+            <button key={id} className={`navItem ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>
+              <Icon size={18} /><span>{label}</span>
+            </button>
+          ))}
         </nav>
-
         <div className="sidebarBottom">
           <div className="profile">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="avatar">{currentUser?.email?.[0]?.toUpperCase() || "G"}</div>
-              <div><b>{currentUser?.email?.split("@")[0] || "Guest"}</b><small style={{ color: currentUser ? "#10b981" : "var(--text-muted)", display: "block" }}>{currentUser ? "Terautentikasi" : "Belum Login"}</small></div>
+            <div>
+              <b>{user?.email?.split("@")[0] || "Guest Node"}</b>
+              <small style={{ color: user ? "#10b981" : "#94a3b8", display: "block" }}>{user ? "Online • Verified" : "Belum Login"}</small>
             </div>
-            {currentUser && (
-              <button onClick={() => fetch("https://api.xawd.my.idhttps://api.xawd.my.idhttps://api.xawd.my.id/api/auth/logout", { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "var(--text-muted)" }}><LogOut size={16} /></button>
+            {user ? (
+              <button onClick={() => fetch(`${API}/api/auth/logout`, { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><LogOut size={16} /></button>
+            ) : (
+              <button onClick={() => setShowAuth(true)} style={{ background: "var(--accent-primary)", border: "none", color: "#fff", padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Login</button>
             )}
           </div>
         </div>
@@ -231,129 +144,106 @@ function App() {
 
       <main className="main">
         <header>
-          <button className="icon menu" onClick={() => setMobile(true)} style={{ background: "none", border: "none", color: "#fff" }}><Menu size={20} /></button>
-          <div className="crumb"><span>XAWD OS</span> <ChevronRight size={14} /> <span>{activeTab}</span></div>
-          <div className="headerActions">
-            {!currentUser ? (
-              <button onClick={() => setShowAuth(true)} style={{ background: "var(--accent-gradient)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-                <User size={14} /> Login / Daftar
-              </button>
-            ) : (
-              <button onClick={() => setLang(lang === "en" ? "id" : "en")} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "#fff", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Globe size={14} /> {lang.toUpperCase()}
-              </button>
-            )}
-          </div>
+          <div className="crumb">XAWD ECOSYSTEM &gt; {tab.toUpperCase()}</div>
+          <div style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa", padding: "6px 14px", borderRadius: 20, fontWeight: 700, border: "1px solid #3b82f6" }}>💎 {balance} $AWD</div>
         </header>
 
         <div className="content">
-          {activeTab === "Overview" && (
+          {tab === "ai" && (
             <section className="aiPanel">
               <div className="aiTop">
-                <div className="aiTitle">
-                  <div className="aiIcon"><Sparkles size={18} /></div>
-                  <div><b>Command Center</b><small>{mode === "text" ? selectedModel : "Flux 1.0 Diffusion"}</small></div>
-                </div>
-                <div style={{ display: "flex", background: "rgba(15, 23, 42, 0.8)", padding: "4px", borderRadius: "10px" }}>
-                  <button onClick={() => setMode("text")} style={{ background: mode === "text" ? "var(--accent-gradient)" : "transparent", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}><MessageSquareText size={14} /> Penalaran</button>
-                  <button onClick={() => setMode("image")} style={{ background: mode === "image" ? "var(--accent-gradient)" : "transparent", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}><ImageIcon size={14} /> Visual Flux</button>
+                <b>Dual Edge Compute</b>
+                <div>
+                  <button onClick={() => handleAi("text")} disabled={loading} style={{ padding: "6px 12px", background: "var(--accent-primary)", color: "#fff", border: "none", borderRadius: 6, marginRight: 6, cursor: "pointer" }}>Text AI</button>
+                  <button onClick={() => handleAi("image")} disabled={loading} style={{ padding: "6px 12px", background: "#1e293b", color: "#fff", border: "1px solid #334155", borderRadius: 6, cursor: "pointer" }}>Flux Image</button>
                 </div>
               </div>
-
-              {mode === "text" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} style={{ width: "100%", background: "rgba(15, 23, 42, 0.6)", color: "#fff", border: "1px solid var(--border-subtle)", padding: "10px 14px", borderRadius: "10px", outline: "none", fontSize: "0.85rem" }}>
-                    {textModels.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                  </select>
-                </div>
-              )}
-
-              <textarea id="command" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === "text" ? "Perintah penalaran kode atau analisis..." : "Deskripsi prompt visual gambar..."} />
-
-              <div className="aiBottom">
-                <button className="run" onClick={handleExecute} disabled={aiLoading}>{aiLoading ? "Memproses..." : "Eksekusi"} <ArrowUpRight size={16} /></button>
-              </div>
-
-              {aiResponse && <div style={{ marginTop: "18px", padding: "16px", background: "rgba(15, 23, 42, 0.8)", borderRadius: "12px", border: "1px solid var(--border-subtle)", whiteSpace: "pre-wrap" }}>{aiResponse}</div>}
-              {generatedImage && <div style={{ marginTop: "18px", textAlign: "center" }}><img src={generatedImage} alt="Render" style={{ maxWidth: "100%", borderRadius: "12px" }} /></div>}
+              <textarea id="command" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Instruksi code intelligence, penalaran, atau visual prompt..." />
+              {output && <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 8, border: "1px solid #334155", whiteSpace: "pre-wrap" }}>{output}</div>}
+              {imgUrl && <div style={{ marginTop: 12, textAlign: "center" }}><img src={imgUrl} alt="render" style={{ maxWidth: "100%", borderRadius: 8 }} /></div>}
             </section>
           )}
 
-          {activeTab === "Developer" && (
-            <div style={{ background: "rgba(30, 41, 59, 0.3)", border: "1px solid var(--border-subtle)", borderRadius: "16px", padding: "24px" }}>
-              <h2>Developer API Keys</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Gunakan kunci ini untuk memanggil endpoint api.xawd.my.id langsung dari aplikasi eksternal.</p>
-              
-              <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-                <input value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="Nama Kunci (misal: Production Bot)" style={{ flex: 1, background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "10px", borderRadius: "8px" }} />
-                <button onClick={handleCreateApiKey} style={{ background: "var(--accent-primary)", border: "none", color: "#fff", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>Buat Kunci Baru</button>
-              </div>
-
-              {generatedKey && (
-                <div style={{ padding: "16px", background: "rgba(16, 185, 129, 0.1)", border: "1px solid #10b981", borderRadius: "10px", marginBottom: "20px" }}>
-                  <b style={{ color: "#10b981" }}>Kunci Anda Berhasil Dibuat:</b>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
-                    <code style={{ background: "#0b0f19", padding: "8px", borderRadius: "6px", color: "#fff", flex: 1 }}>{generatedKey}</code>
-                    <button onClick={() => copyToClipboard(generatedKey)} style={{ background: "none", border: "none", color: "#10b981", cursor: "pointer" }}><Copy size={16} /></button>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {apiKeys.map(k => (
-                  <div key={k.id} style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "8px" }}>
-                    <div><b>{k.name}</b><code style={{ marginLeft: "12px", color: "var(--accent-cyan)" }}>{k.prefix}</code></div>
-                    <span style={{ color: "#10b981", fontSize: "0.8rem" }}>Aktif</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "Referral" && (
-            <div style={{ background: "rgba(30, 41, 59, 0.3)", border: "1px solid var(--border-subtle)", borderRadius: "16px", padding: "24px" }}>
-              <h2>Referral & Anti-Sybil Hub</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Undang pengguna lain untuk menambah kuota komputasi.</p>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
-                <div style={{ padding: "16px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "10px" }}>
-                  <small style={{ color: "var(--text-muted)" }}>Total Diundang</small>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#fff" }}>{referralData?.stats?.totalInvited || 0}</div>
-                </div>
-                <div style={{ padding: "16px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "10px" }}>
-                  <small style={{ color: "var(--text-muted)" }}>Akun Terverifikasi</small>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#10b981" }}>{referralData?.stats?.verifiedAccounts || 0}</div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input readOnly value={referralData?.referralUrl || "Silakan login untuk mendapatkan link..."} style={{ flex: 1, background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "10px", borderRadius: "8px" }} />
-                <button onClick={() => copyToClipboard(referralData?.referralUrl)} disabled={!referralData?.referralUrl} style={{ background: "var(--accent-primary)", border: "none", color: "#fff", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-                  {copiedRef ? <Check size={16} /> : <Copy size={16} />} {copiedRef ? "Tersalin" : "Salin Link"}
+          {tab === "airdrop" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Genesis Airdrop Portal</h2>
+              <p style={{ color: "#94a3b8", fontSize: 13 }}>Klaim alokasi awal validator komunitas XAWD.</p>
+              <div style={{ padding: 20, background: "rgba(16,185,129,0.08)", border: "1px dashed #10b981", borderRadius: 12, margin: "16px 0" }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#10b981" }}>+500 $AWD Ready</div>
+                <button onClick={() => { if (!user) { setShowAuth(true); return; } if (!airdropClaimed) { setBalance(b => b + 500); setAirdropClaimed(true); } }} disabled={airdropClaimed} style={{ marginTop: 12, padding: "10px 20px", background: airdropClaimed ? "#334155" : "var(--accent-gradient)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
+                  {airdropClaimed ? "✓ Sudah Diklaim" : "Klaim Airdrop Sekarang"}
                 </button>
               </div>
             </div>
           )}
 
-          {activeTab === "Pricing" && (
-            <div style={{ background: "rgba(30, 41, 59, 0.3)", border: "1px solid var(--border-subtle)", borderRadius: "16px", padding: "24px" }}>
-              <h2>Paket Langganan & Aktivasi Kuota</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "20px" }}>Pilih paket untuk mengaktifkan akses komputasi tanpa batas.</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
-                {[
-                  { tier: "Plus", price: "Rp59.000/bln", desc: "Akses standard models, 250 visual flux, BYOK vault unthrottled." },
-                  { tier: "Pro", price: "Rp149.000/bln", desc: "Prioritas queue 9router, Deep reasoning agent, developer API key." },
-                  { tier: "Team", price: "Rp799.000/bln", desc: "Workspace bersama, 5 developer key, unlimited team seats." }
-                ].map((p, idx) => (
-                  <div key={idx} style={{ background: "rgba(15, 23, 42, 0.6)", padding: "20px", borderRadius: "14px", border: "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div>
-                      <b>{p.tier}</b>
-                      <h3 style={{ margin: "10px 0", color: "var(--accent-cyan)" }}>{p.price}</h3>
-                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px" }}>{p.desc}</p>
-                    </div>
-                    <button onClick={() => handleCheckout(p.tier)} disabled={checkoutLoading} style={{ width: "100%", padding: "10px", background: "var(--accent-primary)", border: "none", color: "#fff", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>Beli Paket {p.tier}</button>
-                  </div>
-                ))}
+          {tab === "token" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>$AWD Token & Staking Pool</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "16px 0" }}>
+                <div style={{ background: "#1e293b", padding: 16, borderRadius: 10 }}>
+                  <small style={{ color: "#94a3b8" }}>Saldo Wallet</small>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#38bdf8" }}>{balance} AWD</div>
+                </div>
+                <div style={{ background: "#1e293b", padding: 16, borderRadius: 10 }}>
+                  <small style={{ color: "#94a3b8" }}>Staking APY</small>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981" }}>18.4% APR</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "dev" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Developer API Gateway</h2>
+              <div style={{ display: "flex", gap: 8, margin: "16px 0" }}>
+                <input placeholder="Nama API key" value={apiKeyName} onChange={e => setApiKeyName(e.target.value)} style={{ flex: 1, padding: 10, background: "#0b0f19", border: "1px solid #334155", color: "#fff", borderRadius: 8 }} />
+                <button onClick={createKey} style={{ padding: "10px 16px", background: "var(--accent-primary)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>Buat Key</button>
+              </div>
+              {createdKey && (
+                <div style={{ padding: 12, background: "rgba(16,185,129,0.1)", border: "1px solid #10b981", borderRadius: 8, color: "#10b981" }}>
+                  <code>{createdKey}</code>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "workspaces" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Workspaces & Isolated Nodes</h2>
+              <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 16 }}>Ruang kerja kolaboratif proyek AI terdistribusi.</p>
+              <div style={{ background: "#1e293b", padding: 16, borderRadius: 10 }}>
+                <b>Default Environment</b>
+                <small style={{ display: "block", color: "#10b981" }}>Aktif • Edge Node Jawa Timur</small>
+              </div>
+            </div>
+          )}
+
+          {tab === "social" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Social Media & Community Hub</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
+                <a href="https://discord.gg" target="_blank" style={{ textDecoration: "none", background: "#1e293b", padding: 16, borderRadius: 10, color: "#fff" }}><b>Discord</b><small style={{ display: "block", color: "#94a3b8" }}>Komunitas Developer</small></a>
+                <a href="https://t.me" target="_blank" style={{ textDecoration: "none", background: "#1e293b", padding: 16, borderRadius: 10, color: "#fff" }}><b>Telegram</b><small style={{ display: "block", color: "#94a3b8" }}>Notifikasi Airdrop</small></a>
+                <a href="https://x.com" target="_blank" style={{ textDecoration: "none", background: "#1e293b", padding: 16, borderRadius: 10, color: "#fff" }}><b>X (Twitter)</b><small style={{ display: "block", color: "#94a3b8" }}>Update Rilis</small></a>
+                <a href="https://github.com" target="_blank" style={{ textDecoration: "none", background: "#1e293b", padding: 16, borderRadius: 10, color: "#fff" }}><b>GitHub</b><small style={{ display: "block", color: "#94a3b8" }}>Repo & SDK</small></a>
+              </div>
+            </div>
+          )}
+
+          {tab === "ref" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Anti-Sybil Referral</h2>
+              <input readOnly value={user ? `https://xawd.my.id/?ref=AWD-${user.id?.slice(0, 6).toUpperCase()}` : "Login untuk link referral"} style={{ width: "100%", padding: 10, background: "#0b0f19", border: "1px solid #334155", color: "#fff", borderRadius: 8, margin: "16px 0" }} />
+            </div>
+          )}
+
+          {tab === "billing" && (
+            <div style={{ background: "#0f172a", padding: 24, borderRadius: 16, border: "1px solid #334155" }}>
+              <h2>Paket & Billing IDR</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                <div style={{ background: "#1e293b", padding: 16, borderRadius: 10 }}><b>Tier Plus</b><div style={{ color: "#38bdf8", fontSize: 20, margin: "8px 0" }}>Rp59.000/bln</div><small style={{ color: "#94a3b8" }}>Standard compute & visual flux</small></div>
+                <div style={{ background: "#1e293b", padding: 16, borderRadius: 10 }}><b>Tier Pro</b><div style={{ color: "#38bdf8", fontSize: 20, margin: "8px 0" }}>Rp149.000/bln</div><small style={{ color: "#94a3b8" }}>Deep reasoning & Developer API</small></div>
               </div>
             </div>
           )}
@@ -363,5 +253,4 @@ function App() {
   );
 }
 
-const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+createRoot(document.getElementById("root")!).render(<App />);
