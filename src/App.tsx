@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import defaultModels from './data/models.json';
+import React, { useState } from 'react';
+import staticModelList from './data/models.json';
 
 interface ModelItem {
   id: string;
@@ -11,29 +11,17 @@ interface ModelItem {
 }
 
 export default function App() {
-  const [models, setModels] = useState<ModelItem[]>(defaultModels as ModelItem[]);
+  const [models] = useState<ModelItem[]>(staticModelList as ModelItem[]);
   const [selectedTask, setSelectedTask] = useState('text');
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedModel, setSelectedModel] = useState<string>(
-    defaultModels.length > 0 ? (defaultModels[0] as any).id : 'Oc-uni/gemini-3.5-flash'
+    staticModelList.length > 0 ? (staticModelList[0] as any).id : 'ag/gemini-3.8-flash-medium'
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [prompt, setPrompt] = useState('');
   const [reply, setReply] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
-
-  // Sync background jika API aktif
-  useEffect(() => {
-    fetch('https://api.xawd.my.id/api/models')
-      .then(r => r.json())
-      .then(d => {
-        if (d && Array.isArray(d.models) && d.models.length > 0) {
-          setModels(d.models);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const handleExecute = async () => {
     if (!prompt.trim()) return;
@@ -55,7 +43,7 @@ export default function App() {
       } else if (data.error) {
         setReply('Perhatian: ' + data.error);
       } else {
-        setReply('Tidak ada respons dari model.');
+        setReply('Tidak ada respons dari engine.');
       }
     } catch (err: any) {
       setReply('Gagal koneksi: ' + err.message);
@@ -75,12 +63,11 @@ export default function App() {
   const activeModel = models.find(m => m.id === selectedModel) || {
     id: selectedModel,
     name: selectedModel.split('/').pop() || selectedModel,
-    tier: 'HIGH'
+    tier: 'MEDIUM'
   };
 
   return (
     <div className="frame-wrapper">
-      {/* Top Bar */}
       <nav className="frame-navbar">
         <div className="container nav-content">
           <div className="nav-brand">
@@ -91,7 +78,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Hero Header */}
       <header className="hero-section">
         <div className="container text-center">
           <span className="badge-pill">Multi-Model Routing</span>
@@ -100,7 +86,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Container */}
       <main className="container main-content">
         <div className="row">
           {/* Kolom Kiri */}
@@ -182,7 +167,7 @@ export default function App() {
                   <div className="model-menu-popover">
                     <input
                       type="text"
-                      placeholder="Cari engine (Gemini, Claude, GPT, GLM)..."
+                      placeholder="Cari engine..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="search-field"
@@ -229,7 +214,7 @@ export default function App() {
               <div className="prompt-wrapper">
                 <textarea
                   rows={4}
-                  placeholder={`Ketik instruksi atau pertanyaan untuk X AWD...`}
+                  placeholder="Ketik instruksi atau pertanyaan untuk X AWD..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="frame-textarea"
