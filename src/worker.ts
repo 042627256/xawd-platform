@@ -80,7 +80,7 @@ export default {
       return new Response(null, {
         status: 204,
         headers: {
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": request.headers.get("Origin") || "*", "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
           "Access-Control-Allow-Headers": "Content-Type, Authorization"
         }
@@ -90,7 +90,7 @@ export default {
     if (url.pathname === "/api/health") {
       return new Response(JSON.stringify({ status: "healthy", host, timestamp: Date.now() }), {
         status: 200,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": request.headers.get("Origin") || "*", "Access-Control-Allow-Credentials": "true" }
       });
     }
 
