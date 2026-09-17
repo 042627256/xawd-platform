@@ -7,25 +7,20 @@ const PRIMARY_KEYS = [
 
 const TARGET_BASE = "https://9rxawd.up.railway.app/v1";
 
-interface Env {
-  TELEGRAM_BOT_TOKEN?: string;
-}
-
-function json(data: any, status = 200, headers: Record<string, string> = {}) {
+function json(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      ...headers
+      "Access-Control-Allow-Headers": "*"
     }
   });
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
@@ -39,33 +34,38 @@ export default {
       });
     }
 
-    if (url.pathname === "/api/models") {
-      return json({ success: true, message: "Use client static models" });
-    }
-
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
-        const { model, prompt } = body;
+        const requestedModel = (body.model || "").trim();
+        const prompt = body.prompt || "";
 
-        // Model yang dipilih pengguna menjadi target utama, didukung model super cepat ag/gemini jika Claude timeout
-        const targets = [
-          model,
-          "ag/gemini-3.8-flash-medium",
-          "ag/gemini-3.8-flash-low"
-        ].filter(Boolean);
+        if (!requestedModel) {
+          return json({ success: false, error: "Model tidak boleh kosong." }, 400);
+        }
 
-        const uniqueTargets = [...new Set(targets)];
+        // Target utama WAJIB model yang dipilih user di UI
+        const candidateTargets = [requestedModel];
+
+        // Jika model GLM, tambahkan varian GLM lain (bukan gemini yang limit)
+        if (requestedModel.toLowerCase().includes("glm")) {
+          candidateTargets.push("Oc-full/glm/glm-5.3", "Oc-uni/z-ai/glm-5.2", "Oc-full/glm/glm-5.1");
+        } else if (requestedModel.toLowerCase().includes("claude")) {
+          candidateTargets.push("Oc-full/cc/claude-sonnet-5", "ag/claude-sonnet-4-6");
+        } else if (requestedModel.toLowerCase().includes("gpt")) {
+          candidateTargets.push("cx/gpt-5.6-terra", "gh/gpt-4o-mini");
+        }
+
+        const targets = [...new Set(candidateTargets)];
         let finalReply = "";
         let finalModel = "";
-        let lastError = "";
+        let errorDetails = "";
 
-        // Eksekusi cepat: Timeout 7 detik per percobaan agar UI tidak macet
-        for (const target of uniqueTargets) {
+        for (const target of targets) {
           for (const apiKey of PRIMARY_KEYS) {
             try {
               const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 7000);
+              const timer = setTimeout(() => controller.abort(), 28000);
 
               const res = await fetch(`${TARGET_BASE}/chat/completions`, {
                 method: "POST",
@@ -79,7 +79,7 @@ export default {
                     { role: "system", content: AGENT_BASE_INSTRUCTION },
                     { role: "user", content: prompt }
                   ],
-                  max_tokens: 1500
+                  temperature: 0.7
                 }),
                 signal: controller.signal
               });
@@ -93,11 +93,12 @@ export default {
                 finalReply = parsed.choices[0].message.content;
                 finalModel = target;
                 break;
-              } else if (parsed?.error) {
-                lastError = typeof parsed.error === "string" ? parsed.error : parsed.error.message;
+              } else {
+                const errMsg = parsed?.error?.message || (typeof parsed?.error === "string" ? parsed.error : text);
+                errorDetails = `[${target}] [${res.status}]: ${errMsg}`;
               }
             } catch (e: any) {
-              lastError = e.name === "AbortError" ? "Upstream timeout (antrean terlalu padat)" : e.message;
+              errorDetails = `[${target}] Error: ${e.message}`;
             }
           }
           if (finalReply) break;
@@ -106,13 +107,13 @@ export default {
         if (finalReply) {
           return json({ success: true, model: finalModel, reply: finalReply });
         } else {
-          return json({ success: false, error: lastError || "Claude sedang antre panjang di upstream. Coba beralih ke ag/gemini-3.8." }, 500);
+          return json({ success: false, error: errorDetails }, 500);
         }
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
       }
     }
 
-    return json({ message: "X AWD Core Engine Running" });
+    return json({ message: "X AWD Core Engine Online" });
   }
 };
