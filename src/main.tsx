@@ -1,260 +1,303 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  Bot, Cpu, Plus, Send, Radio, Settings, CheckCircle2,
-  RefreshCw, MessageSquare, Shield, Terminal, ArrowRight,
-  Trash2, Power, Play, Sliders
+  Cpu, Bot, Image as ImageIcon, Video, Code, Brain,
+  Send, RefreshCw, CheckCircle2, Play, Layers, Sparkles
 } from "lucide-react";
 import "./styles.css";
 
 const API = "https://api.xawd.my.id";
 
 function App() {
-  const [tab, setTab] = useState<"builder" | "telegram" | "chat" | "logs">("builder");
+  const [tab, setTab] = useState<"studio" | "agents" | "telegram" | "vault">("studio");
+  
+  // Studio State
+  const [taskMode, setTaskMode] = useState<"chat" | "thinking" | "coding" | "image" | "video">("chat");
+  const [prompt, setPrompt] = useState("");
+  const [executing, setExecuting] = useState(false);
+  const [textOutput, setTextOutput] = useState("");
+  const [mediaOutput, setMediaOutput] = useState<string | null>(null);
 
-  // Agents State
+  // Custom Agent Builder State
   const [agents, setAgents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [agentName, setAgentName] = useState("");
+  const [agentRole, setAgentRole] = useState("");
+  const [agentPrompt, setAgentPrompt] = useState("");
+  const [agentLoading, setAgentLoading] = useState(false);
 
-  // New Agent Form
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [systemPrompt, setSystemPrompt] = useState("");
-  const [model, setModel] = useState("Comku");
-  const [temperature, setTemperature] = useState(0.7);
+  // Telegram Info State (Read-only status dari backend)
+  const [tgInfo, setTgInfo] = useState<any>(null);
 
-  // Telegram Integration State
-  const [botToken, setBotToken] = useState(() => localStorage.getItem("my_bot_token") || "");
-  const [webhookResult, setWebhookResult] = useState<any>(null);
-  const [whLoading, setWhLoading] = useState(false);
-
-  // Testing Chat State
-  const [selectedAgent, setSelectedAgent] = useState<any>(null);
-  const [chatInput, setChatInput] = useState("");
-  const [messages, setMessages] = useState<{ sender: "user" | "agent"; text: string }[]>([]);
-  const [chatLoading, setChatLoading] = useState(false);
-
-  // Logs
-  const [logs, setLogs] = useState<any[]>([]);
+  // Vault History
+  const [vault, setVault] = useState<any[]>([]);
 
   useEffect(() => {
+    loadTelegramInfo();
     loadAgents();
+    loadVault();
   }, []);
 
+  const loadTelegramInfo = async () => {
+    try {
+      const res = await fetch(`${API}/api/telegram/info`);
+      const d = await res.json();
+      setTgInfo(d);
+    } catch (_) {}
+  };
+
   const loadAgents = async () => {
-    setLoading(true);
     try {
       const res = await fetch(`${API}/api/agents`);
-      const data = await res.json();
-      setAgents(data.agents || []);
-      if (data.agents && data.agents.length > 0 && !selectedAgent) {
-        setSelectedAgent(data.agents[0]);
+      const d = await res.json();
+      setAgents(d.agents || []);
+    } catch (_) {}
+  };
+
+  const loadVault = async () => {
+    try {
+      const res = await fetch(`${API}/api/vault`);
+      const d = await res.json();
+      setVault(d.outputs || []);
+    } catch (_) {}
+  };
+
+  const executeStudio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    setExecuting(true);
+    setTextOutput("");
+    setMediaOutput(null);
+
+    try {
+      const res = await fetch(`${API}/api/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task: taskMode, prompt })
+      });
+      const d = await res.json();
+      if (d.task === "image" || d.task === "video") {
+        setMediaOutput(d.result);
+      } else {
+        setTextOutput(d.result || d.error || "Selesai dieksekusi.");
       }
-    } catch (e: any) {
-      console.error(e);
+      loadVault();
+    } catch (err: any) {
+      setTextOutput("Error: " + err.message);
     } finally {
-      setLoading(false);
+      setExecuting(false);
     }
   };
 
   const createAgent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !systemPrompt.trim()) return;
-    setLoading(true);
+    if (!agentName.trim() || !agentPrompt.trim()) return;
+    setAgentLoading(true);
     try {
       const res = await fetch(`${API}/api/agents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, system_prompt: systemPrompt, model, temperature })
+        body: JSON.stringify({ name: agentName, role_desc: agentRole, system_prompt: agentPrompt })
       });
       const d = await res.json();
       if (d.success) {
-        setName("");
-        setDescription("");
-        setSystemPrompt("");
-        alert("Agent kustom berhasil dibuat dan siap diaktifkan!");
+        setAgentName("");
+        setAgentRole("");
+        setAgentPrompt("");
+        alert("Agent kustom X AWD berhasil dibuat!");
         loadAgents();
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { alert(e.message); }
+    finally { setAgentLoading(false); }
   };
 
-  const setTelegramAgent = async (agentId: string) => {
+  const activateAgent = async (id: string) => {
     try {
-      const res = await fetch(`${API}/api/agents/set-telegram`, {
+      const res = await fetch(`${API}/api/agents/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: agentId })
+        body: JSON.stringify({ id })
       });
       const d = await res.json();
       if (d.success) {
-        alert("Agent ini sekarang menjadi otak utama Bot Telegram Anda!");
+        alert("Agent ini sekarang menjadi otak utama bot Telegram Anda!");
         loadAgents();
       }
     } catch (e: any) { alert(e.message); }
   };
 
-  const activateTelegramWebhook = async () => {
-    if (!botToken.trim()) {
-      alert("Masukkan Bot Token dari @BotFather terlebih dahulu!");
-      return;
-    }
-    setWhLoading(true);
-    try {
-      localStorage.setItem("my_bot_token", botToken.trim());
-      const res = await fetch(`${API}/api/telegram/set-webhook`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bot_token: botToken.trim() })
-      });
-      const d = await res.json();
-      setWebhookResult(d);
-      if (d.success) {
-        alert("Webhook Telegram Berhasil Diaktifkan! Sekarang chat bot Anda di Telegram.");
-      } else {
-        alert("Gagal set webhook: " + JSON.stringify(d.telegram_response));
-      }
-    } catch (e: any) {
-      alert("Error: " + e.message);
-    } finally {
-      setWhLoading(false);
-    }
-  };
-
-  const testAgentChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !selectedAgent) return;
-    const userMsg = chatInput;
-    setMessages(prev => [...prev, { sender: "user", text: userMsg }]);
-    setChatInput("");
-    setChatLoading(true);
-
-    try {
-      const res = await fetch(`${API}/api/agents/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: selectedAgent.id, message: userMsg })
-      });
-      const d = await res.json();
-      setMessages(prev => [...prev, { sender: "agent", text: d.response }]);
-    } catch (e: any) {
-      setMessages(prev => [...prev, { sender: "agent", text: "Error: " + e.message }]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    try {
-      const res = await fetch(`${API}/api/telegram/logs`);
-      const d = await res.json();
-      setLogs(d.logs || []);
-    } catch (e) {}
-  };
-
   return (
     <div className="d-flex flex-column min-vh-100">
-      {/* Navbar */}
+      {/* Top Navbar */}
       <nav className="navbar navbar-expand-lg border-bottom border-dark-subtle px-4 py-3" style={{ background: "rgba(3, 7, 18, 0.9)", backdropFilter: "blur(20px)" }}>
         <div className="container-fluid">
           <a className="navbar-brand d-flex align-items-center gap-2 text-white fw-bold" href="#">
-            <div className="p-2 rounded-3 btn-primary-glow d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-              <Bot size={20} />
+            <div className="p-2 rounded-3 btn-xawd d-flex align-items-center justify-content-center" style={{ width: 38, height: 38 }}>
+              <Cpu size={22} />
             </div>
-            <span>SYNAPXIS<span style={{ color: "var(--accent-cyan)" }}>.AGENT</span></span>
+            <span className="fs-5 tracking-wider">X AWD<span style={{ color: "var(--xawd-cyan)" }}>.HQ</span></span>
           </a>
 
-          <div className="d-flex gap-2">
-            <button className={`btn btn-sm ${tab === "builder" ? "btn-primary-glow" : "btn-outline-glow"}`} onClick={() => setTab("builder")}>Agent Builder</button>
-            <button className={`btn btn-sm ${tab === "telegram" ? "btn-primary-glow" : "btn-outline-glow"}`} onClick={() => setTab("telegram")}>Telegram Connect</button>
-            <button className={`btn btn-sm ${tab === "chat" ? "btn-primary-glow" : "btn-outline-glow"}`} onClick={() => setTab("chat")}>Uji Chat Agent</button>
-            <button className={`btn btn-sm ${tab === "logs" ? "btn-primary-glow" : "btn-outline-glow"}`} onClick={() => { setTab("logs"); fetchLogs(); }}>Riwayat Telegram</button>
+          <div className="d-flex gap-2 flex-wrap">
+            <button className={`btn btn-sm ${tab === "studio" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTab("studio")}>
+              <Sparkles size={14} className="me-1" /> Multi-Modal Studio
+            </button>
+            <button className={`btn btn-sm ${tab === "agents" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTab("agents")}>
+              <Brain size={14} className="me-1" /> Custom Agent Builder
+            </button>
+            <button className={`btn btn-sm ${tab === "telegram" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => { setTab("telegram"); loadTelegramInfo(); }}>
+              <Bot size={14} className="me-1" /> Status Bot Telegram
+            </button>
+            <button className={`btn btn-sm ${tab === "vault" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => { setTab("vault"); loadVault(); }}>
+              <Layers size={14} className="me-1" /> Vault & History
+            </button>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <div className="px-3 py-1 rounded-pill d-flex align-items-center gap-2" style={{ background: "rgba(56, 189, 248, 0.1)", border: "1px solid var(--xawd-cyan)" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: tgInfo?.connected ? "var(--xawd-emerald)" : "#f59e0b" }}></span>
+              <span className="small font-mono text-info fw-bold">{tgInfo?.connected ? `@${tgInfo.bot?.username}` : "Bot Standby"}</span>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Container */}
+      {/* Main Content */}
       <div className="container py-4 flex-grow-1">
-        {/* 1. AGENT BUILDER (BUAT AGENT SENDIRI) */}
-        {tab === "builder" && (
+        {/* 1. STUDIO (CHAT, THINKING, CODING, IMAGE, VIDEO) */}
+        {tab === "studio" && (
+          <div className="xawd-box p-4">
+            <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+              <div>
+                <h4 className="fw-bold m-0">X AWD Sovereign Multi-Modal Studio</h4>
+                <small className="text-secondary">Eksekusi Penalaran, Koding, Visual Flux, dan Video dalam satu ruang kendali</small>
+              </div>
+
+              <div className="btn-group">
+                <button className={`btn btn-sm ${taskMode === "chat" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTaskMode("chat")}>💬 Chat</button>
+                <button className={`btn btn-sm ${taskMode === "thinking" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTaskMode("thinking")}>🧠 Berpikir</button>
+                <button className={`btn btn-sm ${taskMode === "coding" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTaskMode("coding")}>💻 Koding</button>
+                <button className={`btn btn-sm ${taskMode === "image" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTaskMode("image")}>🎨 Gambar Flux</button>
+                <button className={`btn btn-sm ${taskMode === "video" ? "btn-xawd" : "btn-xawd-outline"}`} onClick={() => setTaskMode("video")}>🎬 Video</button>
+              </div>
+            </div>
+
+            <form onSubmit={executeStudio} className="mb-4">
+              <div className="mb-3">
+                <textarea
+                  rows={5}
+                  required
+                  className="form-control bg-black text-white border-secondary font-mono p-3"
+                  placeholder={
+                    taskMode === "chat" ? "Tanyakan apa saja untuk dijawab langsung oleh agen..." :
+                    taskMode === "thinking" ? "Masukkan topik analitis yang butuh pemecahan mendalam dan penalaran berlapis..." :
+                    taskMode === "coding" ? "Instruksikan kode, debug error, atau buat arsitektur sistem software..." :
+                    taskMode === "image" ? "Tulis deskripsi detail gambar yang ingin dirender (misal: mobil sport masa depan melaju di jalanan basah malam hari)..." :
+                    "Tulis prompt skenario video yang ingin digenerate..."
+                  }
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                ></textarea>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="small text-secondary font-mono">Edge Cluster: Cloudflare Active</span>
+                <button type="submit" disabled={executing} className="btn btn-xawd px-4 py-2">
+                  {executing ? "Sedang Memproses..." : <><Send size={16} className="me-2" /> Jalankan {taskMode.toUpperCase()}</>}
+                </button>
+              </div>
+            </form>
+
+            {executing && <div className="text-info font-mono small my-3">⚡ Menjalankan komputasi neural pada cluster edge...</div>}
+
+            {textOutput && (
+              <div className="p-3 rounded-3 bg-black border border-secondary font-mono small text-light mt-3" style={{ whiteSpace: "pre-wrap" }}>
+                {textOutput}
+              </div>
+            )}
+
+            {mediaOutput && taskMode === "image" && (
+              <div className="text-center mt-3">
+                <img src={mediaOutput} alt="Flux Render" className="img-fluid rounded-3 border border-secondary" style={{ maxHeight: 500 }} />
+              </div>
+            )}
+
+            {mediaOutput && taskMode === "video" && (
+              <div className="text-center mt-3">
+                <video controls autoPlay loop className="w-100 rounded-3 border border-secondary" style={{ maxHeight: 480 }}>
+                  <source src={mediaOutput} type="video/mp4" />
+                </video>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. CUSTOM AGENT BUILDER */}
+        {tab === "agents" && (
           <div className="row g-4">
             <div className="col-lg-5">
-              <div className="glass-box p-4">
+              <div className="xawd-box p-4">
                 <h4 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                  <Plus size={20} className="text-info" /> Buat Agent AI Kustom
+                  <Brain size={22} className="text-info" /> Buat Persona Agent X AWD
                 </h4>
-                <p className="text-secondary small mb-4">Rancang karakter, instruksi kerja, dan model AI sesuai spesifikasi tugas Anda.</p>
+                <p className="text-secondary small mb-4">Rancang agen pribadi yang bertindak sebagai otak utama saat Anda chatting di web ataupun di Telegram.</p>
 
                 <form onSubmit={createAgent}>
                   <div className="mb-3">
                     <label className="form-label small text-secondary">Nama Agent</label>
-                    <input required className="form-control bg-dark text-white border-secondary" placeholder="Contoh: Sentinel Executive, Analis Pasar, Coder Pro" value={name} onChange={e => setName(e.target.value)} />
+                    <input required className="form-control bg-dark text-white border-secondary" placeholder="Contoh: X AWD Master Strategist" value={agentName} onChange={e => setAgentName(e.target.value)} />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small text-secondary">Deskripsi Singkat</label>
-                    <input className="form-control bg-dark text-white border-secondary" placeholder="Tugas utama agent ini..." value={description} onChange={e => setDescription(e.target.value)} />
+                    <label className="form-label small text-secondary">Peran Singkat</label>
+                    <input className="form-control bg-dark text-white border-secondary" placeholder="Contoh: Spesialis koding dan penalaran cepat" value={agentRole} onChange={e => setAgentRole(e.target.value)} />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small text-secondary">Pilihan Model AI</label>
-                    <select className="form-select bg-dark text-white border-secondary" value={model} onChange={e => setModel(e.target.value)}>
-                      <option value="Comku">AWD Neural Core (Default Cepat)</option>
-                      <option value="ag/claude-opus-4-6-thinking">Claude Reasoning Specialist</option>
-                      <option value="ag/gemini-3.8-flash-high">Gemini Fast Processor</option>
-                    </select>
+                    <label className="form-label small text-secondary">System Prompt (Instruksi Berpikir & Perilaku)</label>
+                    <textarea required rows={6} className="form-control bg-dark text-white border-secondary font-mono small" placeholder="Tentukan kepribadian dan aturan berpikir agent ini. Contoh: 'Kamu adalah agen pribadi saya. Jawab selalu to-the-point, logis, terstruktur, dan gunakan bahasa Indonesia yang lugas...'" value={agentPrompt} onChange={e => setAgentPrompt(e.target.value)}></textarea>
                   </div>
 
-                  <div className="mb-3">
-                    <label className="form-label small text-secondary">System Prompt (Instruksi Perilaku Agent)</label>
-                    <textarea required rows={5} className="form-control bg-dark text-white border-secondary font-mono small" placeholder="Tulis instruksi bagaimana agent ini berpikir dan menjawab. Contoh: 'Kamu adalah asisten pribadi saya. Selalu jawab dalam bahasa Indonesia yang ringkas, berikan poin langsung dan analisis mendalam...'" value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)}></textarea>
-                  </div>
-
-                  <button type="submit" disabled={loading} className="btn btn-primary-glow w-100 py-2">
-                    {loading ? "Menyimpan Agent..." : "Simpan & Daftarkan Agent"}
+                  <button type="submit" disabled={agentLoading} className="btn btn-xawd w-100 py-2">
+                    {agentLoading ? "Menyimpan Agent..." : "Simpan Agent Kustom"}
                   </button>
                 </form>
               </div>
             </div>
 
             <div className="col-lg-7">
-              <div className="glass-box p-4">
+              <div className="xawd-box p-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h4 className="fw-bold m-0">Daftar Agent Buatan Anda ({agents.length})</h4>
-                  <button className="btn btn-sm btn-outline-glow" onClick={loadAgents}><RefreshCw size={14} /></button>
+                  <button className="btn btn-sm btn-xawd-outline" onClick={loadAgents}><RefreshCw size={14} /></button>
                 </div>
-                <p className="text-secondary small mb-4">Pilih salah satu agent untuk disambungkan ke Bot Telegram Anda.</p>
+                <p className="text-secondary small mb-4">Klik "Jadikan Otak Telegram" pada agent yang ingin Anda aktifkan untuk membalas chat di bot.</p>
 
                 {agents.length === 0 && (
-                  <div className="text-center py-5 text-secondary">Belum ada agent kustom. Buat agent pertama Anda di form sebelah kiri!</div>
+                  <div className="text-center py-5 text-secondary">Belum ada agent kustom. Buat agent pertama di form sebelah kiri!</div>
                 )}
 
                 <div className="d-flex flex-column gap-3">
-                  {agents.map((agt) => (
+                  {agents.map(agt => (
                     <div key={agt.id} className="p-3 rounded-3 bg-dark border border-secondary d-flex justify-content-between align-items-start">
                       <div>
                         <div className="d-flex align-items-center gap-2">
                           <b className="fs-5">{agt.name}</b>
-                          {agt.is_active_telegram === 1 && (
-                            <span className="badge bg-success small">OTAK BOT TELEGRAM AKTIF</span>
+                          {agt.is_active === 1 && (
+                            <span className="badge bg-success small">OTAK TELEGRAM AKTIF</span>
                           )}
                         </div>
-                        <p className="text-secondary small my-1">{agt.description || "Tanpa deskripsi"}</p>
-                        <code className="text-info small font-mono d-block mt-2">Model: {agt.model}</code>
-                        <div className="p-2 rounded bg-black mt-2 font-mono small text-secondary border border-dark" style={{ maxHeight: 80, overflowY: "auto" }}>
+                        <p className="text-secondary small my-1">{agt.role_desc}</p>
+                        <div className="p-2 rounded bg-black mt-2 font-mono small text-secondary border border-dark" style={{ maxHeight: 90, overflowY: "auto" }}>
                           {agt.system_prompt}
                         </div>
                       </div>
 
-                      <div className="d-flex flex-column gap-2 ms-3">
-                        <button className={`btn btn-sm ${agt.is_active_telegram === 1 ? "btn-success" : "btn-primary-glow"}`} onClick={() => setTelegramAgent(agt.id)}>
-                          {agt.is_active_telegram === 1 ? "✓ Terkoneksi ke Telegram" : "Sambungkan ke Telegram"}
-                        </button>
-                        <button className="btn btn-sm btn-outline-glow" onClick={() => { setSelectedAgent(agt); setTab("chat"); }}>
-                          Uji Chat
+                      <div className="ms-3">
+                        <button
+                          className={`btn btn-sm ${agt.is_active === 1 ? "btn-success" : "btn-xawd"}`}
+                          onClick={() => activateAgent(agt.id)}
+                        >
+                          {agt.is_active === 1 ? "✓ Terhubung ke Bot" : "Jadikan Otak Telegram"}
                         </button>
                       </div>
                     </div>
@@ -265,108 +308,72 @@ function App() {
           </div>
         )}
 
-        {/* 2. TELEGRAM CONNECT (KONEKSIKAN BOT) */}
+        {/* 3. STATUS BOT TELEGRAM (READ-ONLY, BEBAS INPUT TOKEN) */}
         {tab === "telegram" && (
-          <div className="glass-box p-4 mx-auto" style={{ maxWidth: 800 }}>
+          <div className="xawd-box p-4 mx-auto" style={{ maxWidth: 800 }}>
             <div className="d-flex align-items-center gap-2 mb-3">
               <Bot className="text-info" size={32} />
-              <h4 className="fw-bold m-0">Koneksi Bot Telegram ke Custom Agent</h4>
+              <h4 className="fw-bold m-0">Status Bot Telegram X AWD</h4>
             </div>
             <p className="text-secondary small mb-4">
-              Sistem ini akan memasang **Webhook otomatis** ke Cloudflare Edge Worker. Setiap ada pesan masuk ke bot Telegram Anda, pesan tersebut akan diproses oleh Custom Agent yang Anda pilih dan dibalas langsung secara instan.
+              Konfigurasi token dan chat ID telah dipasang langsung melalui perintah terminal Termux. Tidak ada form sensitif di halaman website ini.
             </p>
 
-            <div className="mb-3">
-              <label className="form-label small text-secondary">Telegram Bot Token (Didapatkan dari @BotFather di Telegram)</label>
-              <input type="password" className="form-control bg-dark text-white border-secondary font-mono" placeholder="7123456789:ABCdefGhIJKlmNoPQRstuvWXyz..." value={botToken} onChange={e => setBotToken(e.target.value)} />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label small text-secondary">Webhook Endpoint Otomatis (Cloudflare Pages Worker)</label>
-              <input readOnly className="form-control bg-black text-info border-secondary font-mono small" value={`${API}/api/telegram/webhook`} />
-            </div>
-
-            <button className="btn btn-primary-glow w-100 py-3 mb-4" disabled={whLoading} onClick={activateTelegramWebhook}>
-              {whLoading ? "Memasang Webhook ke Server Telegram..." : "Aktifkan Webhook & Sambungkan Bot Sekarang"}
-            </button>
-
-            {webhookResult && (
-              <div className={`alert ${webhookResult.success ? "alert-success" : "alert-danger"}`}>
-                <h6 className="fw-bold">{webhookResult.success ? "✓ Webhook Sukses Terpasang!" : "Gagal Pasang Webhook"}</h6>
-                {webhookResult.bot_info && (
-                  <div className="small mt-2">
-                    Bot Aktif: <b>@{webhookResult.bot_info.username}</b> ({webhookResult.bot_info.first_name})
-                  </div>
-                )}
-                <pre className="small mt-2 font-mono" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(webhookResult.telegram_response, null, 2)}</pre>
-              </div>
-            )}
-
-            <div className="p-3 rounded-3 bg-dark border border-secondary mt-3">
-              <h6 className="fw-bold text-info">Cara Penggunaan:</h6>
-              <ol className="small text-secondary m-0 ps-3">
-                <li>Buka Telegram, buat bot baru di <b>@BotFather</b> lalu salin tokennya ke form di atas.</li>
-                <li>Pilih agent buatan Anda di tab <b>Agent Builder</b> dan klik <b>"Sambungkan ke Telegram"</b>.</li>
-                <li>Klik tombol <b>"Aktifkan Webhook"</b> di atas.</li>
-                <li>Buka bot Anda di Telegram dan ketik pesan apa saja. Bot akan menjawab menggunakan instruksi dan karakter agent buatan Anda!</li>
-              </ol>
-            </div>
-          </div>
-        )}
-
-        {/* 3. UJI CHAT AGENT LANGSUNG DI WEB */}
-        {tab === "chat" && (
-          <div className="glass-box p-4 mx-auto d-flex flex-column" style={{ maxWidth: 800, height: "75vh" }}>
-            <div className="d-flex justify-content-between align-items-center pb-3 border-bottom border-secondary mb-3">
-              <div>
-                <h5 className="fw-bold m-0">Uji Coba Langsung: {selectedAgent?.name || "Pilih Agent"}</h5>
-                <small className="text-secondary">{selectedAgent?.description || "Testing interaktif prompt"}</small>
-              </div>
-              <select className="form-select form-select-sm bg-dark text-white border-secondary w-auto" value={selectedAgent?.id || ""} onChange={e => setSelectedAgent(agents.find(a => a.id === e.target.value))}>
-                {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-
-            <div className="flex-grow-1 overflow-auto p-2 d-flex flex-column gap-2 mb-3">
-              {messages.length === 0 && (
-                <div className="text-center my-auto text-secondary small">Kirim pesan pertama untuk menguji respon agent buatan Anda.</div>
-              )}
-              {messages.map((m, idx) => (
-                <div key={idx} className={`p-3 rounded-3 font-mono small ${m.sender === "user" ? "bg-primary text-white align-self-end" : "bg-dark border border-secondary text-light align-self-start"}`} style={{ maxWidth: "80%", whiteSpace: "pre-wrap" }}>
-                  <b>{m.sender === "user" ? "Anda" : selectedAgent?.name}:</b><br />
-                  {m.text}
+            <div className="p-4 rounded-3 bg-dark border border-secondary mb-4">
+              <div className="d-flex align-items-center justify-content-between">
+                <div>
+                  <small className="text-secondary d-block">Status Sambungan Webhook</small>
+                  <b className={`fs-5 ${tgInfo?.connected ? "text-success" : "text-warning"}`}>
+                    {tgInfo?.connected ? "✓ Aktif & Terhubung ke Telegram" : "Menunggu Inisialisasi"}
+                  </b>
+                  {tgInfo?.bot && (
+                    <div className="text-info font-mono small mt-2">
+                      Bot: <b>@{tgInfo.bot.username}</b> ({tgInfo.bot.first_name})
+                    </div>
+                  )}
                 </div>
-              ))}
-              {chatLoading && <div className="text-info small font-mono">Sedang berpikir...</div>}
+                <button className="btn btn-sm btn-xawd-outline" onClick={loadTelegramInfo}><RefreshCw size={14} /> Refresh</button>
+              </div>
             </div>
 
-            <form onSubmit={testAgentChat} className="d-flex gap-2">
-              <input className="form-control bg-dark text-white border-secondary font-mono" placeholder="Ketik pesan uji coba..." value={chatInput} onChange={e => setChatInput(e.target.value)} />
-              <button type="submit" disabled={chatLoading} className="btn btn-primary-glow px-4"><Send size={16} /></button>
-            </form>
+            <div className="p-3 rounded-3 bg-dark border border-secondary">
+              <h6 className="fw-bold text-info mb-2">Panduan Penggunaan Perintah di Bot:</h6>
+              <ul className="small text-secondary m-0 ps-3">
+                <li><code>/start</code> - Cek status bot dan daftar menu</li>
+                <li><code>/image &lt;deskripsi&gt;</code> - Membuat gambar Flux dan mengirim foto langsung ke chat</li>
+                <li><code>/video &lt;skenario&gt;</code> - Membuat klip video neural</li>
+                <li><code>/think &lt;topik&gt;</code> - Meminta bot berpikir mendalam dan menganalisis solusi</li>
+                <li><code>/code &lt;tugas&gt;</code> - Meminta bot menuliskan kode atau memperbaiki script</li>
+                <li><code>&lt;chat biasa&gt;</code> - Berbincang santai menggunakan persona Agent yang Anda buat di web</li>
+              </ul>
+            </div>
           </div>
         )}
 
-        {/* 4. RIWAYAT LOG TELEGRAM */}
-        {tab === "logs" && (
-          <div className="glass-box p-4 mx-auto" style={{ maxWidth: 900 }}>
+        {/* 4. VAULT OUTPUT & HISTORY */}
+        {tab === "vault" && (
+          <div className="xawd-box p-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h4 className="fw-bold m-0">Riwayat Percakapan Telegram</h4>
-              <button className="btn btn-sm btn-outline-glow" onClick={fetchLogs}><RefreshCw size={14} /> Refresh</button>
+              <h4 className="fw-bold m-0">X AWD Output Vault & History</h4>
+              <button className="btn btn-sm btn-xawd-outline" onClick={loadVault}><RefreshCw size={14} /> Refresh</button>
             </div>
-            <p className="text-secondary small mb-4">Log percakapan langsung antara pengguna Telegram dengan agent kustom Anda.</p>
+            <p className="text-secondary small mb-4">Semua hasil komputasi (gambar, video, koding, dan penalaran) dari website maupun Telegram tersimpan rapi di sini.</p>
 
-            {logs.length === 0 && <div className="text-center py-5 text-secondary">Belum ada riwayat pesan dari Telegram.</div>}
+            {vault.length === 0 && <div className="text-center py-5 text-secondary">Belum ada output yang tersimpan.</div>}
 
-            <div className="d-flex flex-column gap-3">
-              {logs.map((lg) => (
-                <div key={lg.id} className="p-3 rounded-3 bg-dark border border-secondary font-mono small">
-                  <div className="d-flex justify-content-between text-secondary mb-2">
-                    <span>Pengirim: <b className="text-info">{lg.sender}</b></span>
-                    <span>{new Date(lg.created_at).toLocaleTimeString()}</span>
+            <div className="row g-3">
+              {vault.map(item => (
+                <div key={item.id} className="col-md-6">
+                  <div className="p-3 rounded-3 bg-dark border border-secondary h-100">
+                    <div className="d-flex justify-content-between align-items-center text-secondary small mb-2">
+                      <span className="badge bg-primary text-uppercase">{item.task_type}</span>
+                      <span className="font-mono">{new Date(item.created_at).toLocaleTimeString()} ({item.source})</span>
+                    </div>
+                    <div className="text-info small mb-2 font-mono"><b>Prompt:</b> {item.prompt}</div>
+                    <div className="text-light small font-mono bg-black p-2 rounded border border-dark" style={{ maxHeight: 150, overflowY: "auto", whiteSpace: "pre-wrap" }}>
+                      {item.result}
+                    </div>
                   </div>
-                  <div className="text-warning mb-1"><b>Pesan Pengguna:</b> {lg.message}</div>
-                  <div className="text-light"><b>Jawaban Agent:</b> {lg.response}</div>
                 </div>
               ))}
             </div>
