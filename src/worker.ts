@@ -1,3 +1,5 @@
+const TELEGRAM_BOT_TOKEN = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
+
 const PRIMARY_KEYS = [
   "sk-6e4c5defb3de6300-twi7qt-24c79688",
   "sk-6e4c5defb3de6300-yzpgcc-d5eeb935"
@@ -17,42 +19,81 @@ function json(data: any, status = 200) {
   });
 }
 
-// Parser cerdas: mendukung JSON biasa dan chunk stream SSE
 function parseUpstreamResponse(text: string): string {
   if (!text) return "";
-
-  // 1. Coba parse JSON reguler
   try {
     const data = JSON.parse(text);
-    if (data?.choices?.[0]?.message?.content) {
-      return data.choices[0].message.content;
-    }
-    if (data?.choices?.[0]?.delta?.content) {
-      return data.choices[0].delta.content;
-    }
+    if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
+    if (data?.choices?.[0]?.delta?.content) return data.choices[0].delta.content;
   } catch (_) {}
 
-  // 2. Parse SSE Stream Chunk (data: { ... })
   if (text.includes("data:")) {
     let combined = "";
-    const lines = text.split("\n");
+    const lines = text.split("
+");
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
         try {
-          const jsonStr = trimmed.replace(/^data:\s*/, "");
-          const chunk = JSON.parse(jsonStr);
-          const delta = chunk?.choices?.[0]?.delta?.content || "";
-          combined += delta;
+          const chunk = JSON.parse(trimmed.replace(/^data:s*/, ""));
+          combined += chunk?.choices?.[0]?.delta?.content || "";
         } catch (_) {}
       }
     }
-    if (combined.trim()) {
-      return combined.trim();
+    if (combined.trim()) return combined.trim();
+  }
+  return "";
+}
+
+async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-medium"): Promise<string> {
+  const executionPlan = [
+    requestedModel,
+    "ag/gemini-3.8-flash-medium",
+    "gh/gpt-4o-mini",
+    "gh/gpt-4o"
+  ];
+
+  for (const target of executionPlan) {
+    for (const apiKey of PRIMARY_KEYS) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 20000);
+
+        const res = await fetch(`${TARGET_BASE}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: target,
+            messages: messages,
+            temperature: 0.7
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        const rawText = await res.text();
+        const extracted = parseUpstreamResponse(rawText);
+        if (res.ok && extracted) return extracted;
+      } catch (_) {}
     }
   }
+  return "Maaf, server AI sedang mengalami antrean. Silakan coba lagi.";
+}
 
-  return "";
+async function sendTelegramMessage(chatId: number, text: string) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      parse_mode: "Markdown"
+    })
+  });
 }
 
 export default {
@@ -70,70 +111,43 @@ export default {
       });
     }
 
+    // 1. Endpoint Playground Web
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
-        
         const body: any = await request.json();
-        const requestedModel = (body.model || "").trim();
-        const prompt = (body.prompt || "").trim();
-        const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0 
-          ? body.messages 
-          : [{ role: "user", content: prompt }];
+        const requestedModel = (body.model || "ag/gemini-3.8-flash-medium").trim();
+        const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0
+          ? body.messages
+          : [{ role: "user", content: body.prompt || "" }];
 
-        const pureMessages = incomingMessages;
-
-        for (const target of executionPlan) {
-          for (const apiKey of PRIMARY_KEYS) {
-            try {
-              const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 25000);
-
-              const res = await fetch(`${TARGET_BASE}/chat/completions`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                  model: target,
-                  messages: pureMessages,
-                  temperature: 0.7,
-                  stream: false
-                }),
-                signal: controller.signal
-              });
-              clearTimeout(timer);
-
-              const rawText = await res.text();
-              const extractedText = parseUpstreamResponse(rawText);
-
-              if (res.ok && extractedText) {
-                finalReply = extractedText;
-                finalModel = target;
-                break;
-              } else {
-                let parsedErr: any = null;
-                try { parsedErr = JSON.parse(rawText); } catch (_) {}
-                const errMsg = parsedErr?.error?.message || extractedText || rawText;
-                detailedError = `[${target}] HTTP ${res.status}: ${errMsg}`;
-              }
-            } catch (e: any) {
-              detailedError = `[${target}] Error: ${e.message}`;
-            }
-          }
-          if (finalReply) break;
-        }
-
-        if (finalReply) {
-          return json({ success: true, model: finalModel, reply: finalReply });
-        } else {
-          return json({ success: false, error: detailedError }, 500);
-        }
+        const reply = await executeAI(incomingMessages, requestedModel);
+        return json({ success: true, model: requestedModel, reply });
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
       }
     }
 
-    return json({ message: "X AWD Core Engine Online (Stream-Parser Active)" });
+    // 2. Endpoint Webhook Telegram (/api/telegram/webhook)
+    if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
+      try {
+        const update: any = await request.json();
+        if (update?.message?.text) {
+          const chatId = update.message.chat.id;
+          const userText = update.message.text;
+
+          if (userText === "/start") {
+            await sendTelegramMessage(chatId, "Halo! Saya bot asisten cerdas X AWD. Kirimkan pertanyaan atau instruksi Anda.");
+            return json({ ok: true });
+          }
+
+          // Proses balasan via AI cluster
+          const reply = await executeAI([{ role: "user", content: userText }]);
+          await sendTelegramMessage(chatId, reply);
+        }
+      } catch (_) {}
+      return json({ ok: true });
+    }
+
+    return json({ message: "X AWD Core Engine + Telegram Bot Connected" });
   }
 };
