@@ -122,16 +122,45 @@ export default {
             })
           });
 
-          const d: any = await r.json();
-          if (d.choices && d.choices[0]?.message?.content) {
-            aiReply = d.choices[0].message.content;
-          } else if (d.error) {
-            aiReply = "9Router API Error: " + (d.error.message || JSON.stringify(d.error));
-          } else {
-            aiReply = "9Router merespon tanpa teks: " + JSON.stringify(d);
+          const rawText = await r.text();
+          let d: any = null;
+
+          try {
+            d = JSON.parse(rawText);
+          } catch (_) {
+            // Parser fallback jika 9Router tetap mengembalikan stream SSE (data: {...})
+            const lines = rawText.split("\n");
+            let accumulated = "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+                try {
+                  const chunk = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+                  accumulated += chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || "";
+                } catch (e) {}
+              }
+            }
+            if (accumulated) {
+              aiReply = accumulated;
+            }
+          }
+
+          if (!aiReply && d) {
+            if (d.choices && d.choices[0]?.message?.content) {
+              aiReply = d.choices[0].message.content;
+            } else if (d.error) {
+              aiReply = "9Router Error: " + (d.error.message || JSON.stringify(d.error));
+            } else {
+              aiReply = JSON.stringify(d);
+            }
+          }
+
+          if (!aiReply) {
+            aiReply = "Respons kosong dari 9Router.";
           }
         } catch (netErr: any) {
           aiReply = "Koneksi ke 9Router gagal: " + netErr.message;
+        }
         }
 
         await sendToTelegram(chatId, aiReply);
