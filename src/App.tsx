@@ -122,55 +122,90 @@ export default function App() {
   };
 
   return (
-    <div className="xawd-root">
+    <div className="xawd-viewport-lock">
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* Reset Total Viewport & Cegah Parent Window Bergerak */
+        *, *::before, *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
         html, body {
-          height: 100%;
           width: 100%;
-          background: #131314;
-          overflow: hidden;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-        
-        .xawd-root {
-          display: flex;
-          flex-direction: column;
+          height: 100%;
           height: 100dvh;
-          max-width: 850px;
-          margin: 0 auto;
-          background: #131314;
-          color: #e3e3e3;
-          position: relative;
           overflow: hidden;
+          background-color: #0e0f10;
+          color: #e3e3e3;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+          -webkit-font-smoothing: antialiased;
         }
-        
-        /* Navbar Terkunci Mutlak di Atas */
-        .chat-nav {
-          position: sticky;
+
+        /* 3-Row Grid: Header paten (auto), Chat Scroll (1fr), Footer paten (auto) */
+        .xawd-viewport-lock {
+          position: fixed;
           top: 0;
+          bottom: 0;
           left: 0;
           right: 0;
-          height: 58px;
+          width: 100vw;
+          height: 100dvh;
+          display: flex;
+          justify-content: center;
+          background-color: #0e0f10;
+          overflow: hidden;
+        }
+
+        .xawd-app-shell {
+          width: 100%;
+          max-width: 900px;
+          height: 100%;
+          display: grid;
+          grid-template-rows: 58px 1fr auto;
+          background-color: #131314;
+          border-left: 1px solid #232427;
+          border-right: 1px solid #232427;
+          overflow: hidden;
+          position: relative;
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+          .xawd-app-shell {
+            max-width: 100%;
+            border-left: none;
+            border-right: none;
+            grid-template-rows: 54px 1fr auto;
+          }
+        }
+
+        /* 1. HEADER (BARIS ATAS PATEN) */
+        .header-fixed-row {
+          grid-row: 1;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 0 16px;
-          background: rgba(30, 31, 32, 0.96);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid #2e2f30;
+          background: rgba(30, 31, 32, 0.98);
+          backdrop-filter: blur(16px);
+          border-bottom: 1px solid #28292a;
           z-index: 100;
-          flex-shrink: 0;
+          user-select: none;
         }
+
         .brand-badge {
           background: #1a73e8;
-          color: #fff;
+          color: #ffffff;
           font-weight: 700;
           border-radius: 8px;
           padding: 5px 12px;
           font-size: 13.5px;
           letter-spacing: 0.5px;
+          display: inline-flex;
+          align-items: center;
         }
+
         .model-btn {
           background: #282a2c;
           border: 1px solid #3c4043;
@@ -182,11 +217,12 @@ export default function App() {
           display: flex;
           align-items: center;
           gap: 8px;
-          max-width: 220px;
+          max-width: 260px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
+
         .new-btn {
           background: transparent;
           border: 1px solid #3c4043;
@@ -196,7 +232,118 @@ export default function App() {
           font-size: 12px;
           cursor: pointer;
           white-space: nowrap;
+          transition: background 0.2s;
         }
+        .new-btn:hover { background: #282a2c; }
+
+        /* 2. CHAT CONTAINER (SATU-SATUNYA DAERAH SCROLL) */
+        .chat-scroll-row {
+          grid-row: 2;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* Scrollbar Halus */
+        .chat-scroll-row::-webkit-scrollbar { width: 5px; }
+        .chat-scroll-row::-webkit-scrollbar-thumb { background: #2e2f30; border-radius: 4px; }
+
+        .msg-line { display: flex; width: 100%; }
+        .msg-line.user { justify-content: flex-end; }
+        .msg-line.assistant { justify-content: flex-start; }
+
+        .bubble {
+          max-width: 85%;
+          padding: 12px 16px;
+          border-radius: 18px;
+          font-size: 14.5px;
+          line-height: 1.55;
+          word-break: break-word;
+        }
+        @media (max-width: 600px) {
+          .bubble { max-width: 90%; font-size: 14px; }
+        }
+
+        .bubble.user {
+          background: #2b2c2f;
+          color: #ffffff;
+          border-bottom-right-radius: 4px;
+        }
+        .bubble.assistant {
+          background: #1e1f20;
+          border: 1px solid #333538;
+          color: #e3e3e3;
+          border-bottom-left-radius: 4px;
+        }
+
+        .b-head {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: #9aa0a6;
+          margin-bottom: 5px;
+          gap: 12px;
+        }
+        .b-text { white-space: pre-wrap; }
+        .thinking { font-style: italic; color: #8ab4f8; font-size: 13.5px; }
+
+        /* 3. FOOTER INPUT (BARIS BAWAH PATEN) */
+        .footer-fixed-row {
+          grid-row: 3;
+          display: flex;
+          align-items: center;
+          padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+          background: #1e1f20;
+          border-top: 1px solid #28292a;
+          gap: 10px;
+          z-index: 100;
+        }
+
+        .btn-round {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          border: none;
+          background: #2b2c2f;
+          color: #ffffff;
+          font-size: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: background 0.2s;
+        }
+        .btn-round:hover { background: #383a3d; }
+        .btn-round.send {
+          background: #1a73e8;
+          font-size: 17px;
+        }
+        .btn-round.send:disabled {
+          background: #3c4043;
+          color: #888888;
+          cursor: not-allowed;
+        }
+
+        .chat-in {
+          flex: 1;
+          background: #2b2c2f;
+          border: 1px solid #3c4043;
+          border-radius: 22px;
+          padding: 10px 16px;
+          color: #ffffff;
+          font-size: 14.5px;
+          outline: none;
+          resize: none;
+          max-height: 120px;
+          font-family: inherit;
+        }
+        .chat-in:focus { border-color: #5f6368; }
 
         /* Modal Dialog Pemilih Model */
         .dropdown-overlay {
@@ -226,7 +373,7 @@ export default function App() {
           background: #131314;
           border: 1px solid #3c4043;
           border-radius: 10px;
-          color: #fff;
+          color: #ffffff;
           margin-bottom: 10px;
           outline: none;
           font-size: 13.5px;
@@ -246,9 +393,7 @@ export default function App() {
           border-radius: 10px;
           cursor: pointer;
         }
-        .m-row:hover, .m-row.selected {
-          background: #333538;
-        }
+        .m-row:hover, .m-row.selected { background: #333538; }
         .m-name { font-size: 13.5px; font-weight: 500; }
         .m-id { font-size: 11px; color: #9aa0a6; }
         .t-badge {
@@ -262,50 +407,7 @@ export default function App() {
         .t-badge.medium { background: #4a3b1a; color: #fdd663; }
         .t-badge.low { background: #1e3a29; color: #81c995; }
 
-        /* Wadah Obrolan yang Bebas Bergulir */
-        .chat-history {
-          flex: 1;
-          overflow-y: auto;
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          scroll-behavior: smooth;
-        }
-        .msg-line { display: flex; width: 100%; }
-        .msg-line.user { justify-content: flex-end; }
-        .msg-line.assistant { justify-content: flex-start; }
-        .bubble {
-          max-width: 88%;
-          padding: 12px 16px;
-          border-radius: 18px;
-          font-size: 14.5px;
-          line-height: 1.55;
-          word-wrap: break-word;
-        }
-        .bubble.user {
-          background: #2b2c2f;
-          color: #fff;
-          border-bottom-right-radius: 4px;
-        }
-        .bubble.assistant {
-          background: #1e1f20;
-          border: 1px solid #333538;
-          color: #e3e3e3;
-          border-bottom-left-radius: 4px;
-        }
-        .b-head {
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          color: #9aa0a6;
-          margin-bottom: 5px;
-          gap: 12px;
-        }
-        .b-text { white-space: pre-wrap; }
-        .thinking { font-style: italic; color: #8ab4f8; font-size: 13.5px; }
-
-        /* Bottom Sheet Lampiran */
+        /* Action Sheet */
         .sheet-backdrop {
           position: fixed;
           inset: 0;
@@ -367,72 +469,81 @@ export default function App() {
         .feat-icon { font-size: 20px; }
         .f-title { font-size: 14px; font-weight: 500; }
         .f-sub { font-size: 12px; color: #9aa0a6; }
-
-        /* Baris Input Terkunci di Bagian Bawah */
-        .input-bar {
-          position: sticky;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          display: flex;
-          align-items: center;
-          padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-          background: #1e1f20;
-          border-top: 1px solid #2e2f30;
-          gap: 10px;
-          flex-shrink: 0;
-          z-index: 100;
-        }
-        .btn-round {
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          border: none;
-          background: #2b2c2f;
-          color: #fff;
-          font-size: 22px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .btn-round.send {
-          background: #1a73e8;
-          font-size: 17px;
-        }
-        .btn-round.send:disabled {
-          background: #3c4043;
-          color: #888;
-          cursor: not-allowed;
-        }
-        .chat-in {
-          flex: 1;
-          background: #2b2c2f;
-          border: 1px solid #3c4043;
-          border-radius: 22px;
-          padding: 10px 16px;
-          color: #fff;
-          font-size: 14.5px;
-          outline: none;
-          resize: none;
-          max-height: 110px;
-        }
       `}</style>
 
-      {/* Header Sticky (Kerapatan Tinggi) */}
-      <nav className="chat-nav">
-        <span className="brand-badge">X AWD</span>
-        <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="model-btn">
-          <span>{activeModel.name}</span>
-          <span>{isDropdownOpen ? '▴' : '▾'}</span>
-        </button>
-        <button onClick={() => setMessages([messages[0]])} className="new-btn">
-          + Obrolan Baru
-        </button>
-      </nav>
+      {/* Kontainer Sentral Aplikasi */}
+      <div className="xawd-app-shell">
+        
+        {/* Row 1: Header Terkunci Paten */}
+        <header className="header-fixed-row">
+          <span className="brand-badge">X AWD</span>
+          <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="model-btn">
+            <span>{activeModel.name}</span>
+            <span>{isDropdownOpen ? '▴' : '▾'}</span>
+          </button>
+          <button onClick={() => setMessages([messages[0]])} className="new-btn">
+            + Obrolan Baru
+          </button>
+        </header>
 
-      {/* Popover Pencarian Model */}
+        {/* Row 2: Ruang Obrolan yang Bergulir Bebas */}
+        <main className="chat-scroll-row">
+          {messages.map(msg => (
+            <div key={msg.id} className={`msg-line ${msg.role}`}>
+              <div className={`bubble ${msg.role}`}>
+                <div className="b-head">
+                  <span>{msg.role === 'user' ? 'Anda' : (msg.model || 'X AWD')}</span>
+                  <span>{msg.timestamp}</span>
+                </div>
+                <div className="b-text">{msg.content}</div>
+              </div>
+            </div>
+          ))}
+          {isExecuting && (
+            <div className="msg-line assistant">
+              <div className="bubble assistant thinking">
+                Sedang berpikir...
+              </div>
+            </div>
+          )}
+          <div ref={chatBottomRef} />
+        </main>
+
+        {/* Row 3: Footer Input Terkunci Paten */}
+        <footer className="footer-fixed-row">
+          <button
+            type="button"
+            onClick={() => setIsAttachOpen(true)}
+            className="btn-round"
+            title="Lampiran & Fitur"
+          >
+            +
+          </button>
+          <textarea
+            rows={1}
+            placeholder="Ketik pesan untuk X AWD..."
+            value={inputPrompt}
+            onChange={(e) => setInputPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            className="chat-in"
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={isExecuting || !inputPrompt.trim()}
+            className="btn-round send"
+          >
+            ➤
+          </button>
+        </footer>
+
+      </div>
+
+      {/* Modal Dialog Pemilih Model */}
       {isDropdownOpen && (
         <>
           <div className="dropdown-overlay" onClick={() => setIsDropdownOpen(false)} />
@@ -469,30 +580,7 @@ export default function App() {
         </>
       )}
 
-      {/* Area Pesan Berkelanjutan */}
-      <div className="chat-history">
-        {messages.map(msg => (
-          <div key={msg.id} className={`msg-line ${msg.role}`}>
-            <div className={`bubble ${msg.role}`}>
-              <div className="b-head">
-                <span>{msg.role === 'user' ? 'Anda' : (msg.model || 'X AWD')}</span>
-                <span>{msg.timestamp}</span>
-              </div>
-              <div className="b-text">{msg.content}</div>
-            </div>
-          </div>
-        ))}
-        {isExecuting && (
-          <div className="msg-line assistant">
-            <div className="bubble assistant thinking">
-              Sedang berpikir...
-            </div>
-          </div>
-        )}
-        <div ref={chatBottomRef} />
-      </div>
-
-      {/* Modal Action Sheet Lampiran */}
+      {/* Sheet Action Lampiran Pintas */}
       {isAttachOpen && (
         <div className="sheet-backdrop" onClick={() => setIsAttachOpen(false)}>
           <div className="sheet-body" onClick={e => e.stopPropagation()}>
@@ -531,7 +619,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Hidden File Input */}
+      {/* Input File Hidden */}
       <input
         type="file"
         ref={fileInputRef}
@@ -542,38 +630,6 @@ export default function App() {
           }
         }}
       />
-
-      {/* Sticky Bottom Bar */}
-      <div className="input-bar">
-        <button
-          type="button"
-          onClick={() => setIsAttachOpen(true)}
-          className="btn-round"
-          title="Lampiran & Fitur"
-        >
-          +
-        </button>
-        <textarea
-          rows={1}
-          placeholder="Ketik pesan untuk X AWD..."
-          value={inputPrompt}
-          onChange={(e) => setInputPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          className="chat-in"
-        />
-        <button
-          onClick={() => handleSend()}
-          disabled={isExecuting || !inputPrompt.trim()}
-          className="btn-round send"
-        >
-          ➤
-        </button>
-      </div>
     </div>
   );
 }
