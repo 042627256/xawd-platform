@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import staticModelList from './data/models.json';
 
 interface ModelItem {
@@ -10,55 +10,112 @@ interface ModelItem {
   isCombine: boolean;
 }
 
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  model?: string;
+  timestamp: string;
+}
+
 export default function App() {
   const [models] = useState<ModelItem[]>(staticModelList as ModelItem[]);
-  const [selectedTask, setSelectedTask] = useState('text');
-  const [selectedTier, setSelectedTier] = useState('all');
   const [selectedModel, setSelectedModel] = useState<string>(
     staticModelList.length > 0 ? (staticModelList[0] as any).id : 'ag/gemini-3.8-flash-medium'
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [reply, setReply] = useState('');
+  
+  // State Chat & Tools
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Halo! Saya asisten cerdas X AWD. Ada yang bisa saya bantu hari ini?',
+      model: 'System',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [inputPrompt, setInputPrompt] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isAttachOpen, setIsAttachOpen] = useState(false);
 
-  const handleExecute = async () => {
-    if (!prompt.trim()) return;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isExecuting]);
+
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = overrideText || inputPrompt;
+    if (!textToSend.trim() || isExecuting) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: textToSend.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
+    setInputPrompt('');
     setIsExecuting(true);
-    setReply('Sedang memproses respons X AWD...');
+
     try {
+      // Format riwayat chat untuk dikirim ke API
+      const conversationPayload = newHistory
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({ role: m.role, content: m.content }));
+
       const res = await fetch('https://api.xawd.my.id/api/playground/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: selectedModel,
-          prompt: prompt,
-          task: selectedTask
+          messages: conversationPayload,
+          prompt: textToSend.trim()
         })
       });
+
       const data = await res.json();
-      if (data.reply) {
-        setReply(data.reply);
-      } else if (data.error) {
-        setReply('Perhatian: ' + data.error);
-      } else {
-        setReply('Tidak ada respons dari engine.');
-      }
+      const replyContent = data.reply || data.error || 'Tidak ada respons dari engine.';
+      
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: replyContent,
+          model: data.model || selectedModel,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
     } catch (err: any) {
-      setReply('Gagal koneksi: ' + err.message);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Kesalahan Jaringan: ' + err.message,
+          model: 'Error',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
     } finally {
       setIsExecuting(false);
     }
   };
 
-  const filteredModels = models.filter(m => {
-    const matchTask = selectedTask === 'text' ? true : m.task === selectedTask;
-    const matchTier = selectedTier === 'all' ? true : m.tier === selectedTier;
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || 
-                        m.id.toLowerCase().includes(search.toLowerCase());
-    return matchTask && matchTier && matchSearch;
-  });
+  const handleFileAction = (actionName: string) => {
+    setIsAttachOpen(false);
+    if (actionName === 'Kamera' || actionName === 'File' || actionName === 'Foto') {
+      fileInputRef.current?.click();
+    } else {
+      setInputPrompt(`[Fitur ${actionName}]: `);
+    }
+  };
 
   const activeModel = models.find(m => m.id === selectedModel) || {
     id: selectedModel,
@@ -67,186 +124,171 @@ export default function App() {
   };
 
   return (
-    <div className="frame-wrapper">
-      <nav className="frame-navbar">
-        <div className="container nav-content">
-          <div className="nav-brand">
-            <span className="brand-logo">X</span>
-            <span className="brand-name">X AWD <span className="brand-highlight">Engine</span></span>
+    <div className="chat-app-container">
+      {/* Top Navbar */}
+      <nav className="chat-navbar">
+        <div className="chat-nav-left">
+          <span className="chat-brand-logo">X</span>
+          <div className="chat-model-selector-wrapper">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="chat-model-picker-btn"
+            >
+              <span className="chat-model-name">{activeModel.name}</span>
+              <span className="dropdown-arrow">{isDropdownOpen ? '▴' : '▾'}</span>
+            </button>
           </div>
-          <span className="badge-pill">Enterprise Cluster</span>
         </div>
+        <button onClick={() => setMessages([messages[0]])} className="btn-new-chat" title="Bersihkan Percakapan">
+          + Obrolan Baru
+        </button>
       </nav>
 
-      <header className="hero-section">
-        <div className="container text-center">
-          <span className="badge-pill">Multi-Model Routing</span>
-          <h1 className="hero-title">Frame Command Center</h1>
-          <p className="hero-desc">Sistem kendali multi-engine otonom X AWD.</p>
-        </div>
-      </header>
-
-      <main className="container main-content">
-        <div className="row">
-          {/* Kolom Kiri */}
-          <div className="col-lg-5 mb-4">
-            <div className="frame-card mb-3">
-              <div className="card-header-clean">
-                <span className="header-num">01</span>
-                <div>
-                  <h3 className="card-title">Kategori Tugas</h3>
-                  <p className="card-subtitle">Pilih mode pengerjaan</p>
-                </div>
-              </div>
-
-              <div className="task-selector-grid">
-                {[
-                  { id: 'text', icon: '✍️', label: 'Text & Story', sub: 'Writing, Copy, Coretax' },
-                  { id: 'coding', icon: '💻', label: 'Coding & Dev', sub: 'Syntax, Logic, Refactor' },
-                  { id: 'deep_reason', icon: '🧠', label: 'Deep Reason', sub: 'Logic, Thinking' },
-                  { id: 'image', icon: '🎨', label: 'Image & Vision', sub: 'Visual Multi-Modal' },
-                  { id: 'video', icon: '🎬', label: 'Video & Media', sub: 'Media & Transcribe' }
-                ].map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTask(t.id)}
-                    className={`task-tile ${selectedTask === t.id ? 'task-tile-active' : ''}`}
-                  >
-                    <span className="task-tile-icon">{t.icon}</span>
-                    <div>
-                      <div className="task-tile-title">{t.label}</div>
-                      <div className="task-tile-sub">{t.sub}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="tier-wrapper mt-3">
-                <label className="tier-title">Tingkatan Model:</label>
-                <div className="tier-pills">
-                  {['all', 'low', 'medium', 'high'].map(tr => (
-                    <button
-                      key={tr}
-                      onClick={() => setSelectedTier(tr)}
-                      className={`tier-pill ${selectedTier === tr ? 'tier-pill-active' : ''}`}
-                    >
-                      {tr.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Model Selector Card */}
-            <div className="frame-card model-dropdown-card">
-              <div className="card-header-clean">
-                <span className="header-num">02</span>
-                <div className="w-100 d-flex justify-content-between align-items-center">
-                  <div>
-                    <h3 className="card-title">Model Selector</h3>
-                    <p className="card-subtitle">{models.length} Model Aktif Terdeteksi</p>
-                  </div>
-                  <span className="badge-count">{filteredModels.length} Tersedia</span>
-                </div>
-              </div>
-
-              <div className="dropdown-container">
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="model-select-btn"
+      {/* Model Popover Dropdown */}
+      {isDropdownOpen && (
+        <div className="model-dropdown-modal">
+          <input
+            type="text"
+            placeholder="Cari engine (Gemini, Claude, GPT, GLM)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="model-search-input"
+          />
+          <div className="model-list-scroll">
+            {models
+              .filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.id.toLowerCase().includes(search.toLowerCase()))
+              .map(m => (
+                <div
+                  key={m.id}
+                  onClick={() => {
+                    setSelectedModel(m.id);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`model-list-item ${selectedModel === m.id ? 'active' : ''}`}
                 >
                   <div>
-                    <div className="model-select-name">{activeModel.name}</div>
-                    <div className="model-select-id">{selectedModel}</div>
+                    <div className="model-title">{m.name}</div>
+                    <div className="model-sub">{m.id}</div>
                   </div>
-                  <span>{isDropdownOpen ? '▲' : '▼'}</span>
-                </button>
+                  <span className={`tier-badge ${m.tier}`}>{m.tier}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
-                {isDropdownOpen && (
-                  <div className="model-menu-popover">
-                    <input
-                      type="text"
-                      placeholder="Cari engine..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="search-field"
-                    />
-                    <div className="popover-scrollable">
-                      {filteredModels.map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedModel(m.id);
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`model-item-row ${selectedModel === m.id ? 'model-item-selected' : ''}`}
-                        >
-                          <div>
-                            <div className="model-item-title">{m.name}</div>
-                            <div className="model-item-sub">{m.id}</div>
-                          </div>
-                          <span className={`tier-tag tag-${m.tier}`}>{m.tier}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+      {/* Area Pesan Berkelanjutan (Chat History) */}
+      <div className="chat-message-list">
+        {messages.map(msg => (
+          <div key={msg.id} className={`chat-bubble-row ${msg.role === 'user' ? 'user-row' : 'bot-row'}`}>
+            <div className={`chat-bubble ${msg.role === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+              <div className="bubble-header">
+                <span className="bubble-author">{msg.role === 'user' ? 'Anda' : (msg.model || 'X AWD')}</span>
+                <span className="bubble-time">{msg.timestamp}</span>
               </div>
+              <div className="bubble-content">{msg.content}</div>
             </div>
           </div>
+        ))}
+        {isExecuting && (
+          <div className="chat-bubble-row bot-row">
+            <div className="chat-bubble bot-bubble loading-bubble">
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+              <span className="loading-text">Sedang berpikir...</span>
+            </div>
+          </div>
+        )}
+        <div ref={chatBottomRef} />
+      </div>
 
-          {/* Kolom Kanan */}
-          <div className="col-lg-7">
-            <div className="frame-card console-card">
-              <div className="card-header-clean border-bottom pb-3 mb-3">
-                <span className="header-num">03</span>
-                <div className="w-100 d-flex justify-content-between align-items-center">
-                  <div>
-                    <h3 className="card-title">Playground Output Console</h3>
-                    <p className="card-subtitle">Active Engine: <strong className="text-primary">{selectedModel}</strong></p>
-                  </div>
-                  <span className="badge-mode-pill">{selectedTask.toUpperCase()}</span>
-                </div>
-              </div>
-
-              <div className="prompt-wrapper">
-                <textarea
-                  rows={4}
-                  placeholder="Ketik instruksi atau pertanyaan untuk X AWD..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="frame-textarea"
-                />
-                <button
-                  onClick={handleExecute}
-                  disabled={isExecuting || !prompt.trim()}
-                  className="btn-execute-primary"
-                >
-                  {isExecuting ? 'Mengeksekusi...' : 'Jalankan Prompt →'}
+      {/* Sheet Action Lampiran (Kamera, File, Gambar, dll) */}
+      {isAttachOpen && (
+        <div className="action-sheet-overlay" onClick={() => setIsAttachOpen(false)}>
+          <div className="action-sheet-card" onClick={e => e.stopPropagation()}>
+            <div className="action-sheet-handle"></div>
+            
+            {/* Baris Pintasan Media */}
+            <div className="action-quick-grid">
+              {[
+                { name: 'Kamera', icon: '📷' },
+                { name: 'File', icon: '📎' },
+                { name: 'Drive', icon: '📁' },
+                { name: 'Foto', icon: '🖼️' }
+              ].map(item => (
+                <button key={item.name} onClick={() => handleFileAction(item.name)} className="action-quick-btn">
+                  <div className="action-quick-icon">{item.icon}</div>
+                  <span>{item.name}</span>
                 </button>
-              </div>
+              ))}
+            </div>
 
-              <div className="response-container mt-3">
-                <div className="response-header">
-                  <span>HASIL EKSEKUSI</span>
-                  {reply && <span className="text-success">● Status OK</span>}
+            {/* List Fitur Lanjutan Mirip Gemini */}
+            <div className="action-feature-list">
+              {[
+                { name: 'Gambar', sub: 'Buat dan edit gambar', icon: '🎨' },
+                { name: 'Video', sub: 'Wujudkan ide kreatif', icon: '🎬' },
+                { name: 'Musik', sub: 'Buat trek audio sintetis', icon: '🎵' },
+                { name: 'Canvas', sub: 'Buat kode, tulis, atau slide', icon: '📋' },
+                { name: 'Deep Research', sub: 'Dapatkan laporan mendalam', icon: '🔍' }
+              ].map(feat => (
+                <div key={feat.name} onClick={() => handleFileAction(feat.name)} className="action-feature-item">
+                  <span className="feature-icon">{feat.icon}</span>
+                  <div>
+                    <div className="feature-title">{feat.name}</div>
+                    <div className="feature-sub">{feat.sub}</div>
+                  </div>
                 </div>
-                <div className="response-screen">
-                  {reply ? (
-                    <div className="response-text">{reply}</div>
-                  ) : (
-                    <div className="response-placeholder">
-                      Hasil respons dari engine X AWD akan tampil rapi di sini...
-                    </div>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
-      </main>
+      )}
+
+      {/* Input File Hidden */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          if (e.target.files?.[0]) {
+            setInputPrompt(`[Lampiran: ${e.target.files[0].name}] `);
+          }
+        }}
+      />
+
+      {/* Input Bar Bawah */}
+      <div className="chat-input-bar">
+        <button
+          type="button"
+          onClick={() => setIsAttachOpen(!isAttachOpen)}
+          className={`btn-attach ${isAttachOpen ? 'active' : ''}`}
+          title="Buka Menu Lampiran"
+        >
+          +
+        </button>
+        <textarea
+          rows={1}
+          placeholder="Ketik pesan untuk X AWD..."
+          value={inputPrompt}
+          onChange={(e) => setInputPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          className="chat-textarea"
+        />
+        <button
+          onClick={() => handleSend()}
+          disabled={isExecuting || !inputPrompt.trim()}
+          className="btn-send-message"
+        >
+          ➤
+        </button>
+      </div>
     </div>
   );
 }

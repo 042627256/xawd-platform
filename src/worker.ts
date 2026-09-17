@@ -72,27 +72,15 @@ export default {
 
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
+        
         const body: any = await request.json();
         const requestedModel = (body.model || "").trim();
         const prompt = (body.prompt || "").trim();
+        const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0 
+          ? body.messages 
+          : [{ role: "user", content: prompt }];
 
-        if (!requestedModel) {
-          return json({ success: false, error: "Pilih model terlebih dahulu." }, 400);
-        }
-
-        const executionPlan = [
-          requestedModel,
-          "gh/gpt-4o-mini",
-          "gh/gpt-4o"
-        ];
-
-        let finalReply = "";
-        let finalModel = "";
-        let detailedError = "";
-
-        const pureMessages = [
-          { role: "user", content: prompt }
-        ];
+        const pureMessages = incomingMessages;
 
         for (const target of executionPlan) {
           for (const apiKey of PRIMARY_KEYS) {
