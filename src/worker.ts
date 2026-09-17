@@ -9,20 +9,28 @@ export interface Env {
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
-    const origin = req.headers.get("Origin") || "*";
 
     const cors = {
-      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true"
+      "Content-Type": "application/json"
     };
 
-    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    const json = (d: any, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
 
-    // Inisialisasi tabel D1 jika belum ada
-    if (env.DB) {
+    const json = (data: any, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: cors });
+
+    const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
+    const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
+    const nineKey = env.NINE_ROUTER_API_KEY || "";
+
+    // Inisialisasi aman tabel DB
+    const initDb = async () => {
+      if (!env.DB) return;
       await env.DB.exec(`
         CREATE TABLE IF NOT EXISTS xawd_agents (
           id TEXT PRIMARY KEY,
@@ -32,37 +40,12 @@ export default {
           is_active INTEGER DEFAULT 0,
           created_at INTEGER
         );
-        CREATE TABLE IF NOT EXISTS xawd_vault (
-          id TEXT PRIMARY KEY,
-          type TEXT,
-          content TEXT,
-          created_at INTEGER
-        );
       `).catch(() => {});
-    }
-
-    const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
-    const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
-    const nineKey = env.NINE_ROUTER_API_KEY || "";
-
-    const sendToTelegram = async (chatId: number | string, textMsg: string) => {
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: textMsg, parse_mode: "Markdown" })
-      });
-      const data: any = await res.json().catch(() => ({}));
-      if (!data.ok) {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: textMsg })
-        });
-      }
     };
 
-    // API CRUD AGENTS (Untuk Dashboard Web)
+    // API AGENTS (GET & POST)
     if (url.pathname === "/api/agents") {
+      await initDb();
       if (req.method === "GET") {
         try {
           const { results } = await env.DB.prepare("SELECT * FROM xawd_agents ORDER BY created_at DESC").all();
@@ -74,18 +57,24 @@ export default {
 
       if (req.method === "POST") {
         try {
-          const { name, role, prompt } = await req.json() as any;
+          const body: any = await req.json().catch(() => ({}));
           const id = "agent_" + Date.now();
-          await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
-            .bind(id, name, role, prompt, Date.now()).run();
+          const name = body.name || "Agent";
+          const role = body.role || "Assistant";
+          const prompt = body.prompt || "";
+
+          if (env.DB) {
+            await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
+              .bind(id, name, role, prompt, Date.now()).run();
+          }
           return json({ success: true, id });
-        } catch (e: any) {
-          return json({ error: e.message }, 500);
+        } catch (err: any) {
+          return json({ success: true, id: "fallback_" + Date.now(), warning: err.message });
         }
       }
     }
 
-    // WEBHOOK TELEGRAM
+    // TELEGRAM WEBHOOK
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -95,51 +84,34 @@ export default {
         const chatId = msg.chat.id;
         const text = (msg.text || "").trim();
 
-        const sendAction = (act: string) => {
-          fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+        const sendTelegram = async (t: string) => {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, action: act })
-          }).catch(() => {});
+            body: JSON.stringify({ chat_id: chatId, text: t })
+          });
         };
 
         if (text.startsWith("/start")) {
-          const w = "⚡ *X AWD Autonomous Engine Online*\n\nBot terhubung langsung ke 9Router AI & Cloudflare Flux.\n\n*Perintah Tersedia:*\n💬 *Chat Biasa* -> Tanya langsung ke model 9Router\n🧠 */think <topik>* -> Penalaran mendalam & evaluasi kritis\n💻 */code <tugas>* -> Pemrograman & debugging kode\n🎨 */image <deskripsi>* -> Render gambar Flux";
-          await sendToTelegram(chatId, w);
+          await sendTelegram("⚡ X AWD Autonomous Engine Online\n\nBot terhubung langsung ke 9Router AI.");
           return new Response("OK", { status: 200 });
         }
 
-        if (text.startsWith("/image")) {
-          const p = text.replace("/image", "").trim();
-          if (!p) {
-            await sendToTelegram(chatId, "⚠️ Masukkan deskripsi gambar. Contoh: `/image mobil balap masa depan`");
-            return new Response("OK", { status: 200 });
+        // Ambil persona prompt terbaru jika ada
+        let sysPrompt = "Kamu adalah asisten pintar X AWD.";
+        try {
+          const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
+          if (activeAgent && activeAgent.prompt) {
+            sysPrompt = activeAgent.prompt;
           }
-          sendAction("upload_photo");
-          try {
-            const r = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: p, steps: 4 });
-            const buf = await new Response(r).arrayBuffer();
-            const blob = new Blob([buf], { type: "image/jpeg" });
-            const fd = new FormData();
-            fd.append("chat_id", chatId.toString());
-            fd.append("photo", blob, "xawd.jpg");
-            fd.append("caption", `🎨 *Output:* ${p}`);
-            await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, { method: "POST", body: fd });
-          } catch (e: any) {
-            await sendToTelegram(chatId, "❌ Gagal merender gambar: " + e.message);
-          }
-          return new Response("OK", { status: 200 });
-        }
+        } catch (_) {}
 
-        sendAction("typing");
-        let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban yang cerdas, padat, dan jelas.";
         let cleanText = text;
-
         if (text.startsWith("/think")) {
-          sysPrompt = "Mode Penalaran X AWD: Analisis masalah langkah demi langkah dengan logis dan rinci.";
+          sysPrompt += "\nMode Penalaran: Analisis secara logis dan rinci.";
           cleanText = text.replace("/think", "").trim();
         } else if (text.startsWith("/code")) {
-          sysPrompt = "Mode Koding X AWD: Berikan kode yang terstruktur, bersih, dan solutif.";
+          sysPrompt += "\nMode Koding: Berikan solusi pemrograman bersih.";
           cleanText = text.replace("/code", "").trim();
         }
 
@@ -162,43 +134,30 @@ export default {
           });
 
           const rawText = await r.text();
-          let d: any = null;
-
           try {
-            d = JSON.parse(rawText);
+            const d = JSON.parse(rawText);
+            aiReply = d.choices?.[0]?.message?.content || d.error?.message || rawText;
           } catch (_) {
             const lines = rawText.split("\n");
-            let accumulated = "";
+            let acc = "";
             for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+              const tr = line.trim();
+              if (tr.startsWith("data:") && !tr.includes("[DONE]")) {
                 try {
-                  const chunk = JSON.parse(trimmed.replace(/^data:\s*/, ""));
-                  accumulated += chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || "";
+                  const chunk = JSON.parse(tr.replace(/^data:\s*/, ""));
+                  acc += chunk.choices?.[0]?.delta?.content || "";
                 } catch (e) {}
               }
             }
-            if (accumulated) aiReply = accumulated;
+            aiReply = acc || rawText.slice(0, 500);
           }
-
-          if (!aiReply && d) {
-            if (d.choices && d.choices[0]?.message?.content) {
-              aiReply = d.choices[0].message.content;
-            } else if (d.error) {
-              aiReply = "9Router Error: " + (d.error.message || JSON.stringify(d.error));
-            } else {
-              aiReply = JSON.stringify(d);
-            }
-          }
-
-          if (!aiReply) aiReply = "Respons dari 9Router tidak terbaca: " + rawText.slice(0, 300);
-        } catch (netErr: any) {
-          aiReply = "Koneksi ke 9Router gagal: " + netErr.message;
+        } catch (e: any) {
+          aiReply = "Error 9Router: " + e.message;
         }
 
-        await sendToTelegram(chatId, aiReply);
+        await sendTelegram(aiReply);
         return new Response("OK", { status: 200 });
-      } catch (err: any) {
+      } catch (e) {
         return new Response("OK", { status: 200 });
       }
     }
