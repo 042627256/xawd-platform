@@ -44,7 +44,6 @@ function parseUpstreamResponse(text: string): string {
   return "";
 }
 
-// Kirim sinyal aksi sedang menganalisis / mengetik
 async function sendChatAction(chatId: number, action = "typing") {
   try {
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendChatAction`, {
@@ -65,40 +64,25 @@ async function sendTelegramMessage(chatId: number, text: string) {
   } catch (_) {}
 }
 
-// Unduh file Telegram dan ubah ke format Base64 Data URL
-async function getTelegramFileBase64(fileId: string): Promise<string | null> {
+// Ambil URL publik langsung file dari Telegram
+async function getTelegramFileDirectUrl(fileId: string): Promise<string | null> {
   try {
     const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
     const fileData: any = await fileRes.json();
-    if (!fileData.ok || !fileData.result?.file_path) return null;
-
-    const downloadUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
-    const mediaRes = await fetch(downloadUrl);
-    const arrayBuffer = await mediaRes.arrayBuffer();
-
-    let binary = "";
-    const bytes = new Uint8Array(arrayBuffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    if (fileData.ok && fileData.result?.file_path) {
+      return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
     }
-    const base64 = btoa(binary);
-
-    const ext = fileData.result.file_path.split(".").pop()?.toLowerCase() || "jpeg";
-    const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
-
-    return `data:${mime};base64,${base64}`;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) {}
+  return null;
 }
 
-// Engine Eksekusi AI yang mendukung teks & gambar / dokumen visual
+// Eksekusi Model Vision
 async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-high"): Promise<string> {
   const executionPlan = [
     requestedModel,
-    "ag/gemini-3.8-flash-high",
+    "ag/gemini-3.8-flash-medium",
     "gh/gpt-4o",
-    "Oc-full/am/llama-3.2-11b-vision-instruct"
+    "ag/gemini-3.8-flash-low"
   ];
 
   for (const target of executionPlan) {
@@ -128,7 +112,7 @@ async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-
       } catch (_) {}
     }
   }
-  return "Maaf, engine visual sedang sibuk memproses antrean. Silakan coba beberapa saat lagi.";
+  return "Maaf, antrean model vision sedang sibuk. Silakan coba kembali.";
 }
 
 export default {
@@ -146,7 +130,7 @@ export default {
       });
     }
 
-    // 1. Endpoint Playground Web
+    // 1. Endpoint Web App Playground
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
@@ -162,7 +146,7 @@ export default {
       }
     }
 
-    // 2. Webhook Telegram (Mendukung Teks, Foto, dan Dokumen Gambar)
+    // 2. Webhook Telegram
     if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
       try {
         const update: any = await request.json();
@@ -172,15 +156,15 @@ export default {
           const chatId = msg.chat.id;
 
           const backgroundTask = (async () => {
-            // Tangani Text Biasa
+            // A. Pesan Teks Murni
             if (msg.text) {
               const text = msg.text.trim();
               if (text.startsWith("/start")) {
-                await sendTelegramMessage(chatId, "Halo! Saya bot asisten cerdas X AWD. Kirim pertanyaan, gambar, atau dokumen untuk saya analisis.");
+                await sendTelegramMessage(chatId, "Halo! Saya bot asisten cerdas X AWD. Kirimkan pertanyaan, foto, atau dokumen untuk saya analisis.");
                 return;
               }
               if (text.startsWith("/help")) {
-                await sendTelegramMessage(chatId, "Kirimkan teks atau foto/dokumen berkas (nota, tabel, tangkapan layar), dan saya akan menganalisis isinya.");
+                await sendTelegramMessage(chatId, "Kirimkan teks atau foto/dokumen untuk dianalisis langsung oleh engine.");
                 return;
               }
 
@@ -190,27 +174,27 @@ export default {
               return;
             }
 
-            // Tangani Foto atau Dokumen Gambar
+            // B. Foto atau Dokumen Gambar
             let fileId: string | null = null;
             if (Array.isArray(msg.photo) && msg.photo.length > 0) {
-              // Ambil resolusi gambar terbesar
-              fileId = msg.photo[msg.photo.length - 1].file_id;
+              // Ambil ukuran resolusi sedang agar pengunduhan cepat dan tidak memicu timeout
+              fileId = msg.photo.length > 1 ? msg.photo[msg.photo.length - 2].file_id : msg.photo[0].file_id;
             } else if (msg.document && msg.document.mime_type?.startsWith("image/")) {
               fileId = msg.document.file_id;
             }
 
             if (fileId) {
               await sendChatAction(chatId, "upload_photo");
-              const base64Url = await getTelegramFileBase64(fileId);
-              const caption = msg.caption || "Analisis dan jelaskan detail gambar/dokumen ini.";
+              const directImageUrl = await getTelegramFileDirectUrl(fileId);
+              const caption = msg.caption || "Analisis dan jelaskan detail gambar ini secara lengkap.";
 
-              if (base64Url) {
+              if (directImageUrl) {
                 const visionPayload = [
                   {
                     role: "user",
                     content: [
                       { type: "text", text: caption },
-                      { type: "image_url", image_url: { url: base64Url } }
+                      { type: "image_url", image_url: { url: directImageUrl } }
                     ]
                   }
                 ];
@@ -219,7 +203,7 @@ export default {
                 const visionReply = await executeAI(visionPayload, "ag/gemini-3.8-flash-high");
                 await sendTelegramMessage(chatId, visionReply);
               } else {
-                await sendTelegramMessage(chatId, "Gagal mengunduh file media dari Telegram.");
+                await sendTelegramMessage(chatId, "Gagal mendapatkan URL gambar dari Telegram.");
               }
             }
           })();
@@ -232,9 +216,10 @@ export default {
         }
       } catch (_) {}
 
+      // Berikan respons HTTP 200 instan ke Telegram agar koneksi webhook tidak freeze
       return json({ ok: true });
     }
 
-    return json({ message: "X AWD Multimodal Engine Online" });
+    return json({ message: "X AWD Engine Ready" });
   }
 };
