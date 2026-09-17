@@ -3,19 +3,18 @@ import { createRoot } from "react-dom/client";
 import {
   Home, LayoutDashboard, Terminal, Gift, Coins, Users, CreditCard,
   Share2, Fingerprint, Radio, LogOut, Sparkles, Copy, Check,
-  Shield, Globe, ChevronRight, ArrowUpRight, Zap, Play, CheckCircle2
+  Shield, Globe, ChevronRight, ArrowUpRight, Zap, Play
 } from "lucide-react";
 import "./styles.css";
 
 const API = "https://api.xawd.my.id";
 
 function App() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState(null);
   const [tab, setTab] = useState("home");
   const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<"register" | "sso">("register");
+  const [authMode, setAuthMode] = useState("register");
 
-  // Registration State
   const [fullName, setFullName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [gender, setGender] = useState("Male");
@@ -24,31 +23,30 @@ function App() {
   const [email, setEmail] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
-  // System & Token State
   const [balance, setBalance] = useState(() => Number(localStorage.getItem("awd_bal")) || 1250);
   const [claimed, setClaimed] = useState(() => localStorage.getItem("awd_claimed") === "true");
   const [prompt, setPrompt] = useState("");
   const [output, setOutput] = useState("");
   const [imgUrl, setImgUrl] = useState("");
   const [computing, setComputing] = useState(false);
-  const [keys, setKeys] = useState<any[]>([]);
+  const [keys, setKeys] = useState([]);
   const [keyName, setKeyName] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("xawd_token");
     if (token) {
-      fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(API + "/api/auth/me", { headers: { Authorization: "Bearer " + token } })
         .then(r => r.json())
         .then(d => { if (d.user) setUser(d.user); else localStorage.removeItem("xawd_token"); })
         .catch(() => {});
     }
   }, []);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setAuthLoading(true);
     try {
-      const res = await fetch(`${API}/api/auth/register`, {
+      const res = await fetch(API + "/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, full_name: fullName, id_number: idNumber, gender, phone, address })
@@ -59,21 +57,21 @@ function App() {
         setUser(d.user);
         setShowAuth(false);
       } else {
-        alert(d.error || "Registration error");
+        alert(d.error || "Pendaftaran gagal");
       }
-    } catch (err: any) {
+    } catch (err) {
       alert("Error: " + err.message);
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleSSO = async (provider: string) => {
+  const handleSSO = async (provider) => {
     setAuthLoading(true);
-    const mockEmail = `${provider.toLowerCase()}_node@xawd.io`;
-    const mockName = `${provider} Operator`;
+    const mockEmail = provider.toLowerCase() + "_node@xawd.io";
+    const mockName = provider + " Operator";
     try {
-      const res = await fetch(`${API}/api/auth/quick-login`, {
+      const res = await fetch(API + "/api/auth/quick-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: mockEmail, provider, full_name: mockName })
@@ -84,26 +82,26 @@ function App() {
         setUser(d.user);
         setShowAuth(false);
       }
-    } catch (e: any) { alert(e.message); }
+    } catch (e) { alert(e.message); }
     finally { setAuthLoading(false); }
   };
 
-  const runCompute = async (type: "text" | "image") => {
+  const runCompute = async (type) => {
     if (!prompt.trim()) return;
     setComputing(true);
     setOutput(""); setImgUrl("");
     try {
       const ep = type === "image" ? "/api/ai/image" : "/api/ai/run";
       const token = localStorage.getItem("xawd_token") || "";
-      const res = await fetch(`${API}${ep}`, {
+      const res = await fetch(API + ep, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify(type === "image" ? { prompt } : { prompt })
       });
       const d = await res.json();
       if (d.imageUrl) setImgUrl(d.imageUrl);
-      else setOutput(d.reply || d.error || "Execution completed.");
-    } catch (e: any) { setOutput("Inference error: " + e.message); }
+      else setOutput(d.reply || d.error || "Komputasi selesai.");
+    } catch (e) { setOutput("Inference error: " + e.message); }
     finally { setComputing(false); }
   };
 
@@ -119,7 +117,6 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      {/* Universal Identity Modal */}
       {showAuth && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2, 6, 23, 0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: 20 }}>
           <div className="glass-panel" style={{ maxWidth: 520, width: "100%", padding: 32, maxHeight: "90vh", overflowY: "auto" }}>
@@ -193,13 +190,11 @@ function App() {
                 </div>
               </div>
             )}
-
             <button onClick={() => setShowAuth(false)} style={{ width: "100%", background: "none", border: "none", color: "var(--text-muted)", marginTop: 16, cursor: "pointer", fontSize: 13 }}>Close Window</button>
           </div>
         </div>
       )}
 
-      {/* Sidebar Navigation */}
       <aside className="sidebar-panel">
         <div className="brand-identity">
           <div className="brand-badge">X</div>
@@ -216,7 +211,7 @@ function App() {
             ["social", "Global Community", Share2],
             ["referral", "Referral Hub", Users],
             ["billing", "Compute Fuel & Gas", CreditCard]
-          ].map(([k, l, Icon]: any) => (
+          ].map(([k, l, Icon]) => (
             <button key={k} className={"nav-link " + (tab === k ? "active" : "")} onClick={() => setTab(k)}>
               <Icon size={18} /><span>{l}</span>
             </button>
@@ -238,7 +233,6 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Viewport */}
       <main className="content-viewport">
         <header className="header-glass">
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -252,7 +246,6 @@ function App() {
         </header>
 
         <div className="view-body">
-          {/* TAB 1: OVERVIEW & FABRIC (HOMEPAGE) */}
           {tab === "home" && (
             <div>
               <div className="glass-panel" style={{ textAlign: "center", padding: "60px 24px", marginBottom: 32 }}>
@@ -289,7 +282,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 2: COMMAND CENTER */}
           {tab === "overview" && (
             <div className="glass-panel">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -306,7 +298,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 3: GENESIS AIRDROP */}
           {tab === "airdrop" && (
             <div className="glass-panel" style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
               <h2>Genesis Validator Airdrop</h2>
@@ -320,7 +311,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 4: TOKEN & STAKING */}
           {tab === "token" && (
             <div className="glass-panel">
               <h2>$AWD Liquidity & Staking Hub</h2>
@@ -331,7 +321,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 5: DEVELOPER GATEWAY */}
           {tab === "developer" && (
             <div className="glass-panel">
               <h2>Developer API Gateway</h2>
@@ -350,7 +339,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 6: GLOBAL COMMUNITY */}
           {tab === "social" && (
             <div className="glass-panel">
               <h2>Global Developer Community</h2>
@@ -370,7 +358,6 @@ function App() {
             </div>
           )}
 
-          {/* TAB 7: REFERRAL */}
           {tab === "referral" && (
             <div className="glass-panel">
               <h2>Anti-Sybil Referral Hub</h2>
@@ -378,14 +365,12 @@ function App() {
             </div>
           )}
 
-          {/* TAB 8: COMPUTE FUEL & GAS (PRICING & TOP-UP) */}
           {tab === "billing" && (
             <div className="glass-panel">
               <h2>Compute Fuel & Gas Quota</h2>
               <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 6 }}>Flexible pay-as-you-go micro-credits & high-capacity enterprise subscription tiers.</p>
               
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 24 }}>
-                {/* Free */}
                 <div style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border-subtle)", padding: 24, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
                     <b style={{ fontSize: "1.1rem" }}>Community Node</b>
@@ -399,7 +384,6 @@ function App() {
                   <button className="btn-outline" style={{ width: "100%", marginTop: 20 }}>Current Status</button>
                 </div>
 
-                {/* Plus */}
                 <div style={{ background: "rgba(15, 23, 42, 0.8)", border: "1px solid var(--border-subtle)", padding: 24, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
                     <b style={{ fontSize: "1.1rem" }}>Tier Plus</b>
@@ -413,7 +397,6 @@ function App() {
                   <button className="btn-solid" style={{ width: "100%", marginTop: 20 }}>Activate Plus</button>
                 </div>
 
-                {/* Pro */}
                 <div style={{ background: "linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9))", border: "1px solid var(--border-glow)", padding: 24, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative" }}>
                   <span style={{ position: "absolute", top: 12, right: 12, background: "var(--grad-brand)", color: "#fff", fontSize: "0.65rem", fontWeight: 800, padding: "3px 8px", borderRadius: 12 }}>POPULAR</span>
                   <div>
@@ -428,7 +411,6 @@ function App() {
                   <button className="btn-solid" style={{ width: "100%", marginTop: 20 }}>Deploy Pro Tier</button>
                 </div>
 
-                {/* Enterprise */}
                 <div style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border-subtle)", padding: 24, borderRadius: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
                     <b style={{ fontSize: "1.1rem" }}>Enterprise Node</b>
@@ -450,4 +432,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);
