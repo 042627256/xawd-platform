@@ -25,8 +25,8 @@ export default {
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
     const nineKey = env.NINE_ROUTER_API_KEY || "comku";
 
-    // MEMORI PERMANEN X AWD (Coretax Grounding Context)
-    const CORE_SYSTEM_MEMORY = `__CORETAX_MEMORY_PLACEHOLDER__`;
+    // OTAK & INSTRUKSI UTAMA AGENT X AWD DARI FILE
+    const AGENT_BASE_INSTRUCTION = `__AGENT_BRAIN_PLACEHOLDER__`;
 
     // Inisialisasi Database D1
     const initDb = async () => {
@@ -104,14 +104,14 @@ export default {
             await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
               .bind(id, name, role, prompt, 1, Date.now()).run();
           }
-          return json({ success: true, id, message: "Agent tersimpan dan langsung aktif!" });
+          return json({ success: true, id, message: "Agent tersimpan dan aktif!" });
         } catch (err: any) {
           return json({ success: true, id: "fallback_" + Date.now(), warning: err.message });
         }
       }
     }
 
-    // 4. WEBHOOK TELEGRAM
+    // 4. WEBHOOK TELEGRAM DENGAN MESIN DEFAULT COMKU & ALL
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -130,24 +130,25 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          const menu = "⚡ *X AWD Autonomous Engine Online*\n\n" +
-            "• *Default Model Engine*: `Comku` & `All` Router (Akses 100+ Model)\n" +
-            "• *Memory Status*: Coretax Knowledge Active\n\n" +
-            "Silakan ajukan pertanyaan seputar Coretax atau instruksi lainnya secara langsung.";
-          await sendMsg(menu);
+          const welcome = "⚡ *X AWD Engine Online*\n\n" +
+            "• *Engine*: Router `Comku` & `All` (Akses 100+ Model)\n" +
+            "• *Status*: Persona Agent Aktif\n\n" +
+            "Silakan kirim pesan atau instruksi Anda.";
+          await sendMsg(welcome);
           return new Response("OK", { status: 200 });
         }
 
-        // Susun System Prompt: Memori Coretax + Instruksi Agent Aktif (jika ada)
+        // Ambil instruksi kustom dari web jika ada, gabungkan dengan otak utama file
         let activePrompt = "";
         try {
           const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
-          if (activeAgent?.prompt) activePrompt = "\n[Instruksi Tambahan]:\n" + activeAgent.prompt;
+          if (activeAgent?.prompt) activePrompt = "\n\n" + activeAgent.prompt;
         } catch (_) {}
 
-        const finalSystemPrompt = `Kamu adalah X AWD, asisten cerdas berpengetahuan tinggi.\n\n[MEMORI SISTEM CORETAX]:\n${CORE_SYSTEM_MEMORY}${activePrompt}\n\nGunakan pengetahuan di atas sebagai rujukan utama dalam menjawab pertanyaan. Jawab dengan lugas, cerdas, akurat, dan terstruktur.`;
+        // System prompt murni dari instruksi Coretax.txt Anda
+        const finalSystemPrompt = `${AGENT_BASE_INSTRUCTION}${activePrompt}`;
 
-        // MODEL DEFAULT: "Comku" & "All" diprioritaskan utama
+        // Default engine: prioritaskan Comku dan All
         const candidateModels = ["Comku", "All", "cx/gpt-6-astra", "ag/gemini-3.8-flash-high"];
         let aiReply = "";
 
@@ -188,12 +189,12 @@ export default {
               if (acc) aiReply = acc;
             }
 
-            if (aiReply) break; // Berhasil dijawab oleh Comku atau All
+            if (aiReply) break;
           } catch (_) {}
         }
 
         if (!aiReply) {
-          aiReply = "Maaf, mesin router Comku/All sedang memproses beban tinggi. Silakan coba kembali.";
+          aiReply = "Maaf, router Comku/All sedang memproses beban tinggi. Silakan coba kembali.";
         }
 
         await sendMsg(aiReply);
