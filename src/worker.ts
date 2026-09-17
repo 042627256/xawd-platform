@@ -32,23 +32,6 @@ async function getSessionUser(request: Request, env: Env) {
   }
 }
 
-// Helper: Ambil atau inisialisasi meteran pemakaian user bulan ini
-async function getOrCreateUsage(env: Env, userId: string) {
-  const period = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
-  let meter: any = await env.DB.prepare(
-    "SELECT * FROM usage_meter WHERE user_id = ? AND month_period = ?"
-  ).bind(userId, period).first();
-
-  if (!meter) {
-    const id = crypto.randomUUID();
-    await env.DB.prepare(
-      "INSERT INTO usage_meter (id, user_id, tier, tokens_used, images_generated, month_period, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(id, userId, "Free", 0, 0, period, Date.now()).run();
-    meter = { id, user_id: userId, tier: "Free", tokens_used: 0, images_generated: 0, month_period: period };
-  }
-  return meter;
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -61,12 +44,46 @@ export default {
       });
     }
 
+    // WebAuthn / Passkey: Inisialisasi Challenge
+    if (url.pathname === "/api/auth/passkey/challenge" && request.method === "POST") {
+      const challengeBytes = new Uint8Array(32);
+      crypto.getRandomValues(challengeBytes);
+      let binary = "";
+      for (let i = 0; i < challengeBytes.byteLength; i++) binary += String.fromCharCode(challengeBytes[i]);
+      const challenge = btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const challengeId = crypto.randomUUID();
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+
+      await env.DB.prepare("INSERT INTO auth_challenges (id, challenge, expires_at) VALUES (?, ?, ?)")
+        .bind(challengeId, challenge, expiresAt).run();
+
+      return new Response(JSON.stringify({ challengeId, challenge }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // WebAuthn / Passkey: Simpan Kredensial Baru
+    if (url.pathname === "/api/auth/passkey/register" && request.method === "POST") {
+      const user = await getSessionUser(request, env);
+      if (!user) return new Response(JSON.stringify({ error: "Silakan login terlebih dahulu untuk mendaftarkan passkey" }), { status: 401 });
+
+      const { credentialId, publicKey } = await request.json() as any;
+      if (!credentialId || !publicKey) {
+        return new Response(JSON.stringify({ error: "Data kredensial tidak valid" }), { status: 400 });
+      }
+
+      await env.DB.prepare(
+        "INSERT INTO passkey_credentials (id, user_id, credential_id, public_key, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(crypto.randomUUID(), user.id, credentialId, publicKey, Date.now()).run();
+
+      return new Response(JSON.stringify({ success: true, message: "Passkey berhasil terdaftar" }), { status: 201 });
+    }
+
     // Auth: Me
     if (url.pathname === "/api/auth/me") {
       const user = await getSessionUser(request, env);
-      if (!user) return new Response(JSON.stringify({ user: null }), { status: 401, headers: { "Content-Type": "application/json" } });
-      const usage = await getOrCreateUsage(env, user.id);
-      return new Response(JSON.stringify({ user, usage }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ user }), { status: user ? 200 : 401, headers: { "Content-Type": "application/json" } });
     }
 
     // Auth: Logout
@@ -79,169 +96,38 @@ export default {
       return new Response(JSON.stringify({ success: true }), { status: 200, headers });
     }
 
-    // Usage Meter Check
-    if (url.pathname === "/api/usage" && request.method === "GET") {
-      const user = await getSessionUser(request, env);
-      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-      const usage = await getOrCreateUsage(env, user.id);
-      return new Response(JSON.stringify({ usage }), { status: 200, headers: { "Content-Type": "application/json" } });
-    }
-
-    // Projects CRUD
-    if (url.pathname === "/api/projects") {
-      const user = await getSessionUser(request, env);
-      if (request.method === "GET") {
-        if (!user) return new Response(JSON.stringify({ projects: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-        const rows = await env.DB.prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY updated_at DESC").bind(user.id).all();
-        return new Response(JSON.stringify({ projects: rows.results || [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (request.method === "POST") {
-        if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-        const { name } = await request.json() as any;
-        const id = "proj_" + crypto.randomUUID().slice(0, 8);
-        const now = Date.now();
-        await env.DB.prepare("INSERT INTO projects (id, user_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, user.id, name, "active", now, now).run();
-        return new Response(JSON.stringify({ success: true, project: { id, name, status: "active", updated_at: now } }), { status: 201 });
-      }
-    }
-
-    // Logs Fetcher
-    if (url.pathname === "/api/logs" && request.method === "GET") {
-      const user = await getSessionUser(request, env);
-      const rows = await env.DB.prepare("SELECT * FROM ai_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 20").bind(user ? user.id : "anonymous").all();
-      return new Response(JSON.stringify({ logs: rows.results || [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-    }
-
-    // BYOK
-    if (url.pathname === "/api/byok") {
-      const user = await getSessionUser(request, env);
-      if (request.method === "GET") {
-        if (!user) return new Response(JSON.stringify({ keys: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-        const rows = await env.DB.prepare("SELECT id, provider, updated_at FROM byok_keys WHERE user_id = ?").bind(user.id).all();
-        return new Response(JSON.stringify({ keys: rows.results || [] }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      if (request.method === "POST") {
-        if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-        const { provider, apiKey } = await request.json() as any;
-        const id = crypto.randomUUID();
-        const now = Date.now();
-        await env.DB.prepare("INSERT INTO byok_keys (id, user_id, provider, api_key_encrypted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(id, user.id, provider, apiKey, now, now).run();
-        return new Response(JSON.stringify({ success: true }), { status: 201 });
-      }
-    }
-
-    // AI Image Generator dengan Usage Quota Gate
+    // AI & Core Routing Forwarding
     if (url.pathname === "/api/ai/image" && request.method === "POST") {
-      try {
-        const user = await getSessionUser(request, env);
-        const body = await request.json() as any;
-        const prompt = body?.prompt?.trim();
-        if (!prompt) return new Response(JSON.stringify({ error: "Prompt gambar wajib diisi" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const body = await request.json() as any;
+      const prompt = body?.prompt?.trim();
+      if (!prompt) return new Response(JSON.stringify({ error: "Prompt gambar kosong" }), { status: 400 });
 
-        // Gate: Cek Kuota Akun Free (Batas 10 gambar/bln)
-        if (user) {
-          const usage = await getOrCreateUsage(env, user.id);
-          if (usage.tier === "Free" && usage.images_generated >= 10) {
-            return new Response(JSON.stringify({
-              error: "Batas kuota visual paket Free tercapai (10 gambar). Upgrade ke Plus atau gunakan BYOK."
-            }), { status: 429, headers: { "Content-Type": "application/json" } });
-          }
-        }
+      const response = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 });
+      const buffer = await new Response(response).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const imageUrl = `data:image/jpeg;base64,${btoa(binary)}`;
 
-        const response = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 });
-        const buffer = await new Response(response).arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = "";
-        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-        const imageUrl = `data:image/jpeg;base64,${btoa(binary)}`;
-
-        // Potong Kuota & Catat Log
-        if (user) {
-          await env.DB.prepare(
-            "UPDATE usage_meter SET images_generated = images_generated + 1, updated_at = ? WHERE user_id = ?"
-          ).bind(Date.now(), user.id).run();
-        }
-
-        await env.DB.prepare("INSERT INTO ai_logs (id, user_id, mode, model_used, prompt, response_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .bind(crypto.randomUUID(), user ? user.id : "anonymous", "image", "flux-1-schnell", prompt, imageUrl, Date.now()).run();
-
-        return new Response(JSON.stringify({ imageUrl }), { status: 200, headers: { "Content-Type": "application/json" } });
-      } catch (e: any) {
-        return new Response(JSON.stringify({ error: "Visual error: " + e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
-      }
+      return new Response(JSON.stringify({ imageUrl }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
-    // AI Text Chat dengan Usage Gate & Cost Controller
     if (url.pathname === "/api/ai/run" && request.method === "POST") {
-      try {
-        const user = await getSessionUser(request, env);
-        const body = await request.json() as any;
-        const prompt = body?.prompt?.trim();
+      const body = await request.json() as any;
+      const prompt = body?.prompt?.trim();
+      if (!prompt) return new Response(JSON.stringify({ error: "Prompt kosong" }), { status: 400 });
 
-        if (!prompt) {
-          return new Response(JSON.stringify({ error: "Prompt tidak boleh kosong" }), { status: 400, headers: { "Content-Type": "application/json" } });
-        }
+      const targetModel = body?.model || "Comku";
+      const baseUrl = (env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1").replace(/\/+$/, "");
 
-        // Gate: Cek Kuota Akun Free (Batas 50 request teks/bln)
-        if (user) {
-          const usage = await getOrCreateUsage(env, user.id);
-          if (usage.tier === "Free" && usage.tokens_used >= 50) {
-            return new Response(JSON.stringify({
-              error: "Batas kuota teks paket Free tercapai (50 chat). Masukkan API Key Anda di tab AI Studio (BYOK) untuk akses tanpa batas."
-            }), { status: 429, headers: { "Content-Type": "application/json" } });
-          }
-        }
-
-        const targetModel = body?.model || "Comku";
-        const apiKey = env.NINE_ROUTER_API_KEY;
-        const baseUrl = (env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1").replace(/\/+$/, "");
-
-        const messages = [];
-        if (body?.systemPrompt?.trim()) messages.push({ role: "system", content: body.systemPrompt.trim() });
-        messages.push({ role: "user", content: prompt });
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-        let response: Response;
-        try {
-          response = await fetch(`${baseUrl}/chat/completions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-            body: JSON.stringify({ model: targetModel, messages, stream: false }),
-            signal: controller.signal
-          });
-        } catch (fetchErr: any) {
-          clearTimeout(timeoutId);
-          return new Response(JSON.stringify({ error: "Gateway timeout / unreach: " + fetchErr.message }), { status: 504, headers: { "Content-Type": "application/json" } });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        const rawText = await response.text();
-        let reply = "";
-        try {
-          const parsed = JSON.parse(rawText);
-          reply = parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.error?.message;
-        } catch (_) {}
-
-        if (!reply) reply = rawText || "Respons kosong.";
-
-        // Tambah hitungan kuota pemakaian di D1
-        if (user) {
-          await env.DB.prepare(
-            "UPDATE usage_meter SET tokens_used = tokens_used + 1, updated_at = ? WHERE user_id = ?"
-          ).bind(Date.now(), user.id).run();
-        }
-
-        await env.DB.prepare("INSERT INTO ai_logs (id, user_id, mode, model_used, prompt, response_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .bind(crypto.randomUUID(), user ? user.id : "anonymous", "text", targetModel, prompt, reply, Date.now()).run();
-
-        return new Response(JSON.stringify({ reply }), { status: 200, headers: { "Content-Type": "application/json" } });
-      } catch (e: any) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
-      }
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.NINE_ROUTER_API_KEY}` },
+        body: JSON.stringify({ model: targetModel, messages: [{ role: "user", content: prompt }] })
+      });
+      const data: any = await res.json();
+      const reply = data.choices?.[0]?.message?.content || data.reply || "Respons diterima.";
+      return new Response(JSON.stringify({ reply }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     return env.ASSETS.fetch(request);
