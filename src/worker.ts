@@ -10,10 +10,11 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
 
+    // Header CORS Lengkap untuk menangani fetch antar subdomain
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Headers": "*",
       "Content-Type": "application/json"
     };
 
@@ -25,12 +26,12 @@ export default {
       new Response(JSON.stringify(data), { status, headers: cors });
 
     const botToken = "8815160199:AAHsPauxuowZ5BS9Of08V-PLiHAFsyeXyy8";
+    const webhookUrl = "https://api.xawd.my.id/api/telegram/webhook";
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
     const nineKey = env.NINE_ROUTER_API_KEY || "";
 
-    // Inisialisasi aman tabel DB
-    const initDb = async () => {
-      if (!env.DB) return;
+    // Inisialisasi skema tabel jika belum tersedia
+    if (env.DB) {
       await env.DB.exec(`
         CREATE TABLE IF NOT EXISTS xawd_agents (
           id TEXT PRIMARY KEY,
@@ -40,12 +41,46 @@ export default {
           is_active INTEGER DEFAULT 0,
           created_at INTEGER
         );
+        CREATE TABLE IF NOT EXISTS xawd_config (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        );
       `).catch(() => {});
-    };
+    }
 
-    // API AGENTS (GET & POST)
+    // 1. ENDPOINT STATUS TELEGRAM DASHBOARD
+    if (url.pathname === "/api/telegram/status") {
+      try {
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+        const tgData: any = await tgRes.json();
+        return json({
+          connected: tgData?.result?.url === webhookUrl,
+          webhook_url: tgData?.result?.url || "",
+          pending_update_count: tgData?.result?.pending_update_count || 0,
+          last_error_message: tgData?.result?.last_error_message || null
+        });
+      } catch (e: any) {
+        return json({ connected: false, error: e.message });
+      }
+    }
+
+    // 2. ENDPOINT CONNECT / SET WEBHOOK MANUAL
+    if (url.pathname === "/api/telegram/connect" && req.method === "POST") {
+      try {
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: webhookUrl })
+        });
+        const tgData: any = await tgRes.json();
+        return json({ success: tgData.ok, result: tgData });
+      } catch (e: any) {
+        return json({ success: false, error: e.message }, 500);
+      }
+    }
+
+    // 3. ENDPOINT CRUD AGENTS
     if (url.pathname === "/api/agents") {
-      await initDb();
       if (req.method === "GET") {
         try {
           const { results } = await env.DB.prepare("SELECT * FROM xawd_agents ORDER BY created_at DESC").all();
@@ -59,22 +94,24 @@ export default {
         try {
           const body: any = await req.json().catch(() => ({}));
           const id = "agent_" + Date.now();
-          const name = body.name || "Agent";
+          const name = body.name || "Agent X";
           const role = body.role || "Assistant";
           const prompt = body.prompt || "";
 
           if (env.DB) {
+            // Nonaktifkan agent lain dan aktifkan yang baru
+            await env.DB.prepare("UPDATE xawd_agents SET is_active = 0").run().catch(() => {});
             await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
               .bind(id, name, role, prompt, Date.now()).run();
           }
-          return json({ success: true, id });
+          return json({ success: true, id, message: "Agent berhasil disimpan dan dihubungkan ke bot." });
         } catch (err: any) {
           return json({ success: true, id: "fallback_" + Date.now(), warning: err.message });
         }
       }
     }
 
-    // TELEGRAM WEBHOOK
+    // 4. WEBHOOK TELEGRAM ENGINE
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -84,7 +121,7 @@ export default {
         const chatId = msg.chat.id;
         const text = (msg.text || "").trim();
 
-        const sendTelegram = async (t: string) => {
+        const sendMsg = async (t: string) => {
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -93,28 +130,29 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          await sendTelegram("⚡ X AWD Autonomous Engine Online\n\nBot terhubung langsung ke 9Router AI.");
+          await sendMsg("⚡ X AWD Autonomous Engine Online\n\nBot aktif dan terhubung ke dashboard web & 9Router AI.");
           return new Response("OK", { status: 200 });
         }
 
-        // Ambil persona prompt terbaru jika ada
-        let sysPrompt = "Kamu adalah asisten pintar X AWD.";
+        // Ambil System Prompt dari Agent aktif di D1
+        let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban cerdas dan lugas.";
         try {
           const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
-          if (activeAgent && activeAgent.prompt) {
+          if (activeAgent?.prompt) {
             sysPrompt = activeAgent.prompt;
           }
         } catch (_) {}
 
         let cleanText = text;
         if (text.startsWith("/think")) {
-          sysPrompt += "\nMode Penalaran: Analisis secara logis dan rinci.";
+          sysPrompt += "\nMode Penalaran: Analisis secara logis dan mendalam.";
           cleanText = text.replace("/think", "").trim();
         } else if (text.startsWith("/code")) {
           sysPrompt += "\nMode Koding: Berikan solusi pemrograman bersih.";
           cleanText = text.replace("/code", "").trim();
         }
 
+        // Request ke 9Router dengan safe SSE parser
         let aiReply = "";
         try {
           const r = await fetch(nineBase + "/chat/completions", {
@@ -152,10 +190,10 @@ export default {
             aiReply = acc || rawText.slice(0, 500);
           }
         } catch (e: any) {
-          aiReply = "Error 9Router: " + e.message;
+          aiReply = "Error koneksi 9Router: " + e.message;
         }
 
-        await sendTelegram(aiReply);
+        await sendMsg(aiReply);
         return new Response("OK", { status: 200 });
       } catch (e) {
         return new Response("OK", { status: 200 });
