@@ -25,17 +25,13 @@ export default {
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
     const nineKey = env.NINE_ROUTER_API_KEY || "";
 
-    // Fungsi pengiriman aman ke Telegram (Anti-Drop)
     const sendToTelegram = async (chatId: number | string, textMsg: string) => {
-      // Coba kirim format Markdown terlebih dahulu
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatId, text: textMsg, parse_mode: "Markdown" })
       });
       const data: any = await res.json().catch(() => ({}));
-      
-      // Jika ditolak karena formatting error, kirim sebagai teks mentah
       if (!data.ok) {
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
@@ -45,7 +41,7 @@ export default {
       }
     };
 
-    // 1. TELEGRAM WEBHOOK HANDLER
+    // Handler Webhook Telegram
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -69,11 +65,10 @@ export default {
           return new Response("OK", { status: 200 });
         }
 
-        // Generate Gambar Flux
         if (text.startsWith("/image")) {
           const p = text.replace("/image", "").trim();
           if (!p) {
-            await sendToTelegram(chatId, "⚠️ Masukkan deskripsi gambar. Contoh: `/image mobil balap masa depan`");
+            await sendToTelegram(chatId, "⚠️ Masukkan deskripsi gambar. Contoh: `/image mobil sport cyberpunk`");
             return new Response("OK", { status: 200 });
           }
           sendAction("upload_photo");
@@ -92,16 +87,15 @@ export default {
           return new Response("OK", { status: 200 });
         }
 
-        // Teks: 9Router AI (/think, /code, chat)
         sendAction("typing");
-        let sysPrompt = "Kamu adalah agen kecerdasan pribadi X AWD. Jawab dengan cerdas, lugas, dan akurat.";
+        let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban yang cerdas, padat, dan jelas.";
         let cleanText = text;
 
         if (text.startsWith("/think")) {
-          sysPrompt = "Mode Penalaran Mendalam X AWD: Analisis masalah langkah demi langkah dengan logika berlapis.";
+          sysPrompt = "Mode Penalaran X AWD: Analisis masalah langkah demi langkah dengan logis dan rinci.";
           cleanText = text.replace("/think", "").trim();
         } else if (text.startsWith("/code")) {
-          sysPrompt = "Mode Koding X AWD: Berikan kode yang terstruktur, bersih, dan langsung dapat dieksekusi.";
+          sysPrompt = "Mode Koding X AWD: Berikan kode yang terstruktur, bersih, dan solutif.";
           cleanText = text.replace("/code", "").trim();
         }
 
@@ -115,6 +109,7 @@ export default {
             },
             body: JSON.stringify({
               model: "Comku",
+              stream: false,
               messages: [
                 { role: "system", content: sysPrompt },
                 { role: "user", content: cleanText }
@@ -128,7 +123,7 @@ export default {
           try {
             d = JSON.parse(rawText);
           } catch (_) {
-            // Parser fallback jika 9Router tetap mengembalikan stream SSE (data: {...})
+            // Tangani respons jika 9Router tetap mengalirkan SSE (data: {...})
             const lines = rawText.split("\n");
             let accumulated = "";
             for (const line of lines) {
@@ -156,46 +151,16 @@ export default {
           }
 
           if (!aiReply) {
-            aiReply = "Respons kosong dari 9Router.";
+            aiReply = "Respons dari 9Router tidak terbaca: " + rawText.slice(0, 300);
           }
         } catch (netErr: any) {
           aiReply = "Koneksi ke 9Router gagal: " + netErr.message;
-        }
         }
 
         await sendToTelegram(chatId, aiReply);
         return new Response("OK", { status: 200 });
       } catch (err: any) {
         return new Response("OK", { status: 200 });
-      }
-    }
-
-    // Endpoint Website Studio
-    if (url.pathname === "/api/execute" && req.method === "POST") {
-      try {
-        const { task, prompt } = await req.json() as any;
-        if (task === "image") {
-          const r = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: prompt || "abstract art", steps: 4 });
-          const buf = await new Response(r).arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-          return json({ success: true, task: "image", result: "data:image/jpeg;base64," + b64 });
-        }
-
-        const r = await fetch(nineBase + "/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(nineKey ? { "Authorization": `Bearer ${nineKey}` } : {})
-          },
-          body: JSON.stringify({
-            model: "Comku",
-            messages: [{ role: "user", content: prompt }]
-          })
-        });
-        const d: any = await r.json();
-        return json({ success: true, task, result: d.choices?.[0]?.message?.content || JSON.stringify(d) });
-      } catch (e: any) {
-        return json({ error: e.message }, 500);
       }
     }
 
