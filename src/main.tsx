@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight, ChevronRight, FolderKanban, LayoutDashboard, Menu,
   Sparkles, LogOut, MessageSquareText, ImageIcon, Globe, CreditCard,
-  Users, Terminal, Copy, Check, Fingerprint
+  Users, Terminal, Copy, Check, User
 } from "lucide-react";
 import "./styles.css";
 
@@ -33,6 +33,9 @@ function App() {
   const [referralData, setReferralData] = useState<any>(null);
   const [copiedRef, setCopiedRef] = useState(false);
 
+  const [showAuth, setShowAuth] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+
   const [activeInvoice, setActiveInvoice] = useState<any>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -50,7 +53,6 @@ function App() {
   }, []);
 
   const loadAllData = () => {
-    fetch("/api/projects").then(res => res.json()).then(data => setProjects(data.projects || [])).catch(() => {});
     fetch("/api/referrals").then(res => res.json()).then(setReferralData).catch(() => {});
     fetch("/api/developer/keys").then(res => res.json()).then(data => setApiKeys(data.keys || [])).catch(() => {});
   };
@@ -88,7 +90,27 @@ function App() {
     }
   };
 
+  const handleQuickLogin = async () => {
+    if (!authEmail.trim()) return;
+    try {
+      const res = await fetch("/api/auth/quick-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail })
+      });
+      const d = await res.json();
+      if (d.success) window.location.reload();
+      else alert(d.error || "Gagal login");
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
   const handleCheckout = async (planTier: string) => {
+    if (!currentUser) {
+      setShowAuth(true);
+      return;
+    }
     setCheckoutLoading(true);
     try {
       const res = await fetch("/api/billing/checkout", {
@@ -97,11 +119,8 @@ function App() {
         body: JSON.stringify({ planTier })
       });
       const data = await res.json();
-      if (data.success) {
-        setActiveInvoice(data);
-      } else {
-        alert(data.error || "Gagal membuat invoice");
-      }
+      if (data.success) setActiveInvoice(data);
+      else alert(data.error || "Gagal checkout");
     } catch (e: any) {
       alert("Error: " + e.message);
     } finally {
@@ -110,6 +129,10 @@ function App() {
   };
 
   const handleCreateApiKey = async () => {
+    if (!currentUser) {
+      setShowAuth(true);
+      return;
+    }
     if (!newKeyName.trim()) return;
     try {
       const res = await fetch("/api/developer/keys", {
@@ -140,6 +163,22 @@ function App() {
 
   return (
     <div className="app">
+      {/* Auth Modal */}
+      {showAuth && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "20px" }}>
+          <div style={{ background: "#0f172a", border: "1px solid var(--accent-primary)", borderRadius: "16px", padding: "24px", maxWidth: "380px", width: "100%" }}>
+            <h3 style={{ color: "#fff", marginBottom: "8px" }}>Masuk / Daftar Akun</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Masukkan email Anda untuk login instan atau membuat akun baru.</p>
+            <input type="email" placeholder="nama@domain.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "12px", borderRadius: "10px", marginBottom: "16px", outline: "none" }} />
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setShowAuth(false)} style={{ flex: 1, padding: "10px", background: "transparent", border: "1px solid var(--border-subtle)", color: "#fff", borderRadius: "8px", cursor: "pointer" }}>Batal</button>
+              <button onClick={handleQuickLogin} style={{ flex: 1, padding: "10px", background: "var(--accent-gradient)", border: "none", color: "#fff", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Masuk</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Invoice Modal */}
       {activeInvoice && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }}>
           <div style={{ background: "#0f172a", border: "1px solid var(--accent-cyan)", borderRadius: "16px", padding: "24px", maxWidth: "450px", width: "100%" }}>
@@ -169,9 +208,6 @@ function App() {
           <button className={`navItem ${activeTab === "Developer" ? "active" : ""}`} onClick={() => { setActiveTab("Developer"); setMobile(false); }}>
             <Terminal size={18} /><span>Developer API</span>
           </button>
-          <button className={`navItem ${activeTab === "Projects" ? "active" : ""}`} onClick={() => { setActiveTab("Projects"); setMobile(false); }}>
-            <FolderKanban size={18} /><span>Workspaces</span>
-          </button>
           <button className={`navItem ${activeTab === "Referral" ? "active" : ""}`} onClick={() => { setActiveTab("Referral"); setMobile(false); }}>
             <Users size={18} /><span>Referral Hub</span>
           </button>
@@ -183,10 +219,12 @@ function App() {
         <div className="sidebarBottom">
           <div className="profile">
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="avatar">{currentUser?.email?.[0]?.toUpperCase() || "A"}</div>
-              <div><b>{currentUser?.email?.split("@")[0] || "Guest"}</b><small style={{ color: "#10b981", display: "block" }}>Online</small></div>
+              <div className="avatar">{currentUser?.email?.[0]?.toUpperCase() || "G"}</div>
+              <div><b>{currentUser?.email?.split("@")[0] || "Guest"}</b><small style={{ color: currentUser ? "#10b981" : "var(--text-muted)", display: "block" }}>{currentUser ? "Terautentikasi" : "Belum Login"}</small></div>
             </div>
-            <button onClick={() => fetch("/api/auth/logout", { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "var(--text-muted)" }}><LogOut size={16} /></button>
+            {currentUser && (
+              <button onClick={() => fetch("/api/auth/logout", { method: "POST" }).then(() => window.location.reload())} style={{ background: "none", border: "none", color: "var(--text-muted)" }}><LogOut size={16} /></button>
+            )}
           </div>
         </div>
       </aside>
@@ -196,9 +234,15 @@ function App() {
           <button className="icon menu" onClick={() => setMobile(true)} style={{ background: "none", border: "none", color: "#fff" }}><Menu size={20} /></button>
           <div className="crumb"><span>XAWD OS</span> <ChevronRight size={14} /> <span>{activeTab}</span></div>
           <div className="headerActions">
-            <button onClick={() => setLang(lang === "en" ? "id" : "en")} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "#fff", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Globe size={14} /> {lang.toUpperCase()}
-            </button>
+            {!currentUser ? (
+              <button onClick={() => setShowAuth(true)} style={{ background: "var(--accent-gradient)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                <User size={14} /> Login / Daftar
+              </button>
+            ) : (
+              <button onClick={() => setLang(lang === "en" ? "id" : "en")} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", color: "#fff", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Globe size={14} /> {lang.toUpperCase()}
+              </button>
+            )}
           </div>
         </header>
 
@@ -224,7 +268,7 @@ function App() {
                 </div>
               )}
 
-              <textarea id="command" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === "text" ? "Perintah penalaran kode atau analisis arsitektur..." : "Deskripsi prompt visual gambar..."} />
+              <textarea id="command" value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === "text" ? "Perintah penalaran kode atau analisis..." : "Deskripsi prompt visual gambar..."} />
 
               <div className="aiBottom">
                 <button className="run" onClick={handleExecute} disabled={aiLoading}>{aiLoading ? "Memproses..." : "Eksekusi"} <ArrowUpRight size={16} /></button>
@@ -252,7 +296,6 @@ function App() {
                     <code style={{ background: "#0b0f19", padding: "8px", borderRadius: "6px", color: "#fff", flex: 1 }}>{generatedKey}</code>
                     <button onClick={() => copyToClipboard(generatedKey)} style={{ background: "none", border: "none", color: "#10b981", cursor: "pointer" }}><Copy size={16} /></button>
                   </div>
-                  <small style={{ color: "var(--text-muted)", display: "block", marginTop: "4px" }}>Salin sekarang. Kunci tidak akan ditampilkan lagi demi keamanan.</small>
                 </div>
               )}
 
@@ -270,7 +313,7 @@ function App() {
           {activeTab === "Referral" && (
             <div style={{ background: "rgba(30, 41, 59, 0.3)", border: "1px solid var(--border-subtle)", borderRadius: "16px", padding: "24px" }}>
               <h2>Referral & Anti-Sybil Hub</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Undang developer lain. Kuota tambahan hanya dihitung jika akun terverifikasi aktif menjalankan eksekusi sistem.</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Undang pengguna lain untuk menambah kuota komputasi.</p>
               
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
                 <div style={{ padding: "16px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "10px" }}>
@@ -284,8 +327,8 @@ function App() {
               </div>
 
               <div style={{ display: "flex", gap: "8px" }}>
-                <input readOnly value={referralData?.referralUrl || "Memuat tautan..."} style={{ flex: 1, background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "10px", borderRadius: "8px" }} />
-                <button onClick={() => copyToClipboard(referralData?.referralUrl)} style={{ background: "var(--accent-primary)", border: "none", color: "#fff", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                <input readOnly value={referralData?.referralUrl || "Silakan login untuk mendapatkan link..."} style={{ flex: 1, background: "#0b0f19", border: "1px solid var(--border-subtle)", color: "#fff", padding: "10px", borderRadius: "8px" }} />
+                <button onClick={() => copyToClipboard(referralData?.referralUrl)} disabled={!referralData?.referralUrl} style={{ background: "var(--accent-primary)", border: "none", color: "#fff", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
                   {copiedRef ? <Check size={16} /> : <Copy size={16} />} {copiedRef ? "Tersalin" : "Salin Link"}
                 </button>
               </div>
@@ -309,21 +352,6 @@ function App() {
                       <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px" }}>{p.desc}</p>
                     </div>
                     <button onClick={() => handleCheckout(p.tier)} disabled={checkoutLoading} style={{ width: "100%", padding: "10px", background: "var(--accent-primary)", border: "none", color: "#fff", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}>Beli Paket {p.tier}</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "Projects" && (
-            <div style={{ background: "rgba(30, 41, 59, 0.3)", border: "1px solid var(--border-subtle)", borderRadius: "16px", padding: "24px" }}>
-              <h2>Workspaces & Kolaborasi Tim</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "16px" }}>Ruang kerja proyek terisolasi yang mendukung pembagian akses tim.</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {projects.map(p => (
-                  <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "8px" }}>
-                    <div><b>{p.name}</b><small style={{ display: "block", color: "var(--text-muted)" }}>ID: {p.id}</small></div>
-                    <span style={{ color: "#10b981", fontSize: "0.8rem" }}>Active</span>
                   </div>
                 ))}
               </div>
