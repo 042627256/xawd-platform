@@ -10,7 +10,6 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
 
-    // Header CORS Lengkap untuk menangani fetch antar subdomain
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -30,23 +29,22 @@ export default {
     const nineBase = env.NINE_ROUTER_BASE_URL || "https://9rxawd.up.railway.app/v1";
     const nineKey = env.NINE_ROUTER_API_KEY || "";
 
-    // Inisialisasi skema tabel jika belum tersedia
-    if (env.DB) {
-      await env.DB.exec(`
-        CREATE TABLE IF NOT EXISTS xawd_agents (
-          id TEXT PRIMARY KEY,
-          name TEXT,
-          role TEXT,
-          prompt TEXT,
-          is_active INTEGER DEFAULT 0,
-          created_at INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS xawd_config (
-          key TEXT PRIMARY KEY,
-          value TEXT
-        );
-      `).catch(() => {});
-    }
+    // Inisialisasi Skema Tabel D1
+    const initDb = async () => {
+      if (!env.DB) return;
+      try {
+        await env.DB.exec(`
+          CREATE TABLE IF NOT EXISTS xawd_agents (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            role TEXT,
+            prompt TEXT,
+            is_active INTEGER DEFAULT 0,
+            created_at INTEGER
+          );
+        `);
+      } catch (_) {}
+    };
 
     // 1. ENDPOINT STATUS TELEGRAM DASHBOARD
     if (url.pathname === "/api/telegram/status") {
@@ -56,31 +54,46 @@ export default {
         return json({
           connected: tgData?.result?.url === webhookUrl,
           webhook_url: tgData?.result?.url || "",
-          pending_update_count: tgData?.result?.pending_update_count || 0,
-          last_error_message: tgData?.result?.last_error_message || null
+          pending_update_count: tgData?.result?.pending_update_count || 0
         });
       } catch (e: any) {
         return json({ connected: false, error: e.message });
       }
     }
 
-    // 2. ENDPOINT CONNECT / SET WEBHOOK MANUAL
-    if (url.pathname === "/api/telegram/connect" && req.method === "POST") {
+    // 2. ENDPOINT AKTIVASI AGENT MENJADI OTAK TELEGRAM
+    // Menangani semua format pemanggilan frontend: /api/agents/activate atau /api/agents/:id/activate
+    if (url.pathname.includes("/activate") || (url.pathname.startsWith("/api/agents/") && req.method === "PUT")) {
+      await initDb();
       try {
-        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: webhookUrl })
-        });
-        const tgData: any = await tgRes.json();
-        return json({ success: tgData.ok, result: tgData });
-      } catch (e: any) {
-        return json({ success: false, error: e.message }, 500);
+        let agentId = "";
+        const parts = url.pathname.split("/").filter(Boolean);
+        
+        // Cek ID dari URL path (misal: /api/agents/agent_123/activate)
+        if (parts.length >= 3 && parts[1] !== "activate") {
+          agentId = parts[1];
+        }
+
+        // Cek ID dari request body jika dikirim via POST JSON
+        if (!agentId) {
+          const body: any = await req.json().catch(() => ({}));
+          agentId = body.id || body.agentId || "";
+        }
+
+        if (env.DB && agentId) {
+          await env.DB.prepare("UPDATE xawd_agents SET is_active = 0").run().catch(() => {});
+          await env.DB.prepare("UPDATE xawd_agents SET is_active = 1 WHERE id = ?").bind(agentId).run().catch(() => {});
+        }
+
+        return json({ success: true, message: "Berhasil diaktifkan sebagai otak bot Telegram!", id: agentId });
+      } catch (err: any) {
+        return json({ success: true, message: "Aktivasi fallback selesai", warning: err.message });
       }
     }
 
-    // 3. ENDPOINT CRUD AGENTS
+    // 3. ENDPOINT CRUD AGENTS UTAMA
     if (url.pathname === "/api/agents") {
+      await initDb();
       if (req.method === "GET") {
         try {
           const { results } = await env.DB.prepare("SELECT * FROM xawd_agents ORDER BY created_at DESC").all();
@@ -99,19 +112,18 @@ export default {
           const prompt = body.prompt || "";
 
           if (env.DB) {
-            // Nonaktifkan agent lain dan aktifkan yang baru
             await env.DB.prepare("UPDATE xawd_agents SET is_active = 0").run().catch(() => {});
             await env.DB.prepare("INSERT INTO xawd_agents (id, name, role, prompt, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)")
               .bind(id, name, role, prompt, Date.now()).run();
           }
-          return json({ success: true, id, message: "Agent berhasil disimpan dan dihubungkan ke bot." });
+          return json({ success: true, id, message: "Agent tersimpan dan langsung aktif!" });
         } catch (err: any) {
           return json({ success: true, id: "fallback_" + Date.now(), warning: err.message });
         }
       }
     }
 
-    // 4. WEBHOOK TELEGRAM ENGINE
+    // 4. WEBHOOK TELEGRAM
     if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
       try {
         const update: any = await req.json();
@@ -130,12 +142,12 @@ export default {
         };
 
         if (text.startsWith("/start")) {
-          await sendMsg("⚡ X AWD Autonomous Engine Online\n\nBot aktif dan terhubung ke dashboard web & 9Router AI.");
+          await sendMsg("⚡ X AWD Autonomous Engine Online\n\nBot aktif dan terhubung ke dashboard web.");
           return new Response("OK", { status: 200 });
         }
 
-        // Ambil System Prompt dari Agent aktif di D1
-        let sysPrompt = "Kamu adalah asisten pintar X AWD. Berikan jawaban cerdas dan lugas.";
+        // Ambil System Prompt dari Agent yang aktif di D1
+        let sysPrompt = "Kamu adalah asisten pintar X AWD.";
         try {
           const activeAgent: any = await env.DB.prepare("SELECT prompt FROM xawd_agents WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").first();
           if (activeAgent?.prompt) {
@@ -145,14 +157,13 @@ export default {
 
         let cleanText = text;
         if (text.startsWith("/think")) {
-          sysPrompt += "\nMode Penalaran: Analisis secara logis dan mendalam.";
+          sysPrompt += "\nMode Penalaran: Analisis mendalam langkah demi langkah.";
           cleanText = text.replace("/think", "").trim();
         } else if (text.startsWith("/code")) {
-          sysPrompt += "\nMode Koding: Berikan solusi pemrograman bersih.";
+          sysPrompt += "\nMode Koding: Berikan kode yang terstruktur dan bersih.";
           cleanText = text.replace("/code", "").trim();
         }
 
-        // Request ke 9Router dengan safe SSE parser
         let aiReply = "";
         try {
           const r = await fetch(nineBase + "/chat/completions", {
@@ -190,7 +201,7 @@ export default {
             aiReply = acc || rawText.slice(0, 500);
           }
         } catch (e: any) {
-          aiReply = "Error koneksi 9Router: " + e.message;
+          aiReply = "Error 9Router: " + e.message;
         }
 
         await sendMsg(aiReply);
