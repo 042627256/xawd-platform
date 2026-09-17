@@ -21,7 +21,7 @@ interface ChatMessage {
 export default function App() {
   const [models] = useState<ModelItem[]>(staticModelList as ModelItem[]);
   const [selectedModel, setSelectedModel] = useState<string>(
-    staticModelList.length > 0 ? (staticModelList[0] as any).id : 'ag/gemini-3.8-flash-medium'
+    staticModelList.length > 0 ? (staticModelList[0] as any).id : 'ag/gemini-3.8-flash-high'
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -60,7 +60,6 @@ export default function App() {
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
     setInputPrompt('');
-    setIsExecuting(false);
     setIsExecuting(true);
 
     try {
@@ -126,64 +125,302 @@ export default function App() {
     <div className="xawd-root">
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { height: 100%; background: #131314; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .xawd-root { display: flex; flex-direction: column; height: 100vh; max-width: 850px; margin: 0 auto; background: #131314; color: #e3e3e3; position: relative; }
+        html, body {
+          height: 100%;
+          width: 100%;
+          background: #131314;
+          overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
         
-        /* Navbar */
-        .chat-nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #1e1f20; border-bottom: 1px solid #2e2f30; z-index: 10; }
-        .brand-badge { background: #1a73e8; color: #fff; font-weight: bold; border-radius: 8px; padding: 4px 10px; font-size: 14px; }
-        .model-btn { background: #282a2c; border: 1px solid #3c4043; color: #e3e3e3; border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .new-btn { background: transparent; border: 1px solid #3c4043; color: #8ab4f8; padding: 5px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; }
+        .xawd-root {
+          display: flex;
+          flex-direction: column;
+          height: 100dvh;
+          max-width: 850px;
+          margin: 0 auto;
+          background: #131314;
+          color: #e3e3e3;
+          position: relative;
+          overflow: hidden;
+        }
         
-        /* Modal Dropdown */
-        .dropdown-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
-        .dropdown-box { position: absolute; top: 56px; left: 16px; right: 16px; max-width: 480px; margin: 0 auto; background: #232427; border: 1px solid #3c4043; border-radius: 14px; padding: 12px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-        .search-in { width: 100%; padding: 8px 12px; background: #131314; border: 1px solid #3c4043; border-radius: 8px; color: #fff; margin-bottom: 8px; outline: none; }
-        .model-items { max-height: 280px; overflow-y: auto; }
-        .m-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-        .m-row:hover, .m-row.selected { background: #333538; }
-        .m-name { font-size: 13px; font-weight: 500; }
+        /* Navbar Terkunci Mutlak di Atas */
+        .chat-nav {
+          position: sticky;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 58px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 16px;
+          background: rgba(30, 31, 32, 0.96);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid #2e2f30;
+          z-index: 100;
+          flex-shrink: 0;
+        }
+        .brand-badge {
+          background: #1a73e8;
+          color: #fff;
+          font-weight: 700;
+          border-radius: 8px;
+          padding: 5px 12px;
+          font-size: 13.5px;
+          letter-spacing: 0.5px;
+        }
+        .model-btn {
+          background: #282a2c;
+          border: 1px solid #3c4043;
+          color: #e3e3e3;
+          border-radius: 20px;
+          padding: 6px 14px;
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          max-width: 220px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .new-btn {
+          background: transparent;
+          border: 1px solid #3c4043;
+          color: #8ab4f8;
+          padding: 6px 12px;
+          border-radius: 16px;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        /* Modal Dialog Pemilih Model */
+        .dropdown-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.65);
+          backdrop-filter: blur(4px);
+          z-index: 200;
+        }
+        .dropdown-box {
+          position: fixed;
+          top: 64px;
+          left: 16px;
+          right: 16px;
+          max-width: 500px;
+          margin: 0 auto;
+          background: #232427;
+          border: 1px solid #3c4043;
+          border-radius: 16px;
+          padding: 14px;
+          z-index: 210;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+        }
+        .search-in {
+          width: 100%;
+          padding: 10px 14px;
+          background: #131314;
+          border: 1px solid #3c4043;
+          border-radius: 10px;
+          color: #fff;
+          margin-bottom: 10px;
+          outline: none;
+          font-size: 13.5px;
+        }
+        .model-items {
+          max-height: 50vh;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .m-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 12px;
+          border-radius: 10px;
+          cursor: pointer;
+        }
+        .m-row:hover, .m-row.selected {
+          background: #333538;
+        }
+        .m-name { font-size: 13.5px; font-weight: 500; }
         .m-id { font-size: 11px; color: #9aa0a6; }
-        .t-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .t-badge {
+          font-size: 10px;
+          padding: 3px 7px;
+          border-radius: 5px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
         .t-badge.high { background: #5c2b29; color: #f28b82; }
         .t-badge.medium { background: #4a3b1a; color: #fdd663; }
         .t-badge.low { background: #1e3a29; color: #81c995; }
 
-        /* Chat Area */
-        .chat-history { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+        /* Wadah Obrolan yang Bebas Bergulir */
+        .chat-history {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          scroll-behavior: smooth;
+        }
         .msg-line { display: flex; width: 100%; }
         .msg-line.user { justify-content: flex-end; }
         .msg-line.assistant { justify-content: flex-start; }
-        .bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 14.5px; line-height: 1.5; word-wrap: break-word; }
-        .bubble.user { background: #2b2c2f; color: #fff; border-bottom-right-radius: 4px; }
-        .bubble.assistant { background: #1e1f20; border: 1px solid #333538; color: #e3e3e3; border-bottom-left-radius: 4px; }
-        .b-head { display: flex; justify-content: space-between; font-size: 11px; color: #9aa0a6; margin-bottom: 4px; gap: 10px; }
+        .bubble {
+          max-width: 88%;
+          padding: 12px 16px;
+          border-radius: 18px;
+          font-size: 14.5px;
+          line-height: 1.55;
+          word-wrap: break-word;
+        }
+        .bubble.user {
+          background: #2b2c2f;
+          color: #fff;
+          border-bottom-right-radius: 4px;
+        }
+        .bubble.assistant {
+          background: #1e1f20;
+          border: 1px solid #333538;
+          color: #e3e3e3;
+          border-bottom-left-radius: 4px;
+        }
+        .b-head {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: #9aa0a6;
+          margin-bottom: 5px;
+          gap: 12px;
+        }
         .b-text { white-space: pre-wrap; }
-        .thinking { font-style: italic; color: #8ab4f8; font-size: 13px; }
+        .thinking { font-style: italic; color: #8ab4f8; font-size: 13.5px; }
 
-        /* Action Sheet */
-        .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
-        .sheet-body { width: 100%; max-width: 600px; background: #1e1f20; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 16px 20px 24px; max-height: 75vh; overflow-y: auto; }
-        .sheet-drag { width: 36px; height: 4px; background: #5f6368; border-radius: 2px; margin: 0 auto 16px; }
-        .sheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
-        .grid-btn { background: #2b2c2f; border: none; border-radius: 12px; padding: 12px 6px; color: #e3e3e3; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+        /* Bottom Sheet Lampiran */
+        .sheet-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.6);
+          backdrop-filter: blur(2px);
+          z-index: 250;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+        .sheet-body {
+          width: 100%;
+          max-width: 600px;
+          background: #1e1f20;
+          border-top-left-radius: 24px;
+          border-top-right-radius: 24px;
+          padding: 16px 20px 28px;
+          max-height: 70vh;
+          overflow-y: auto;
+          box-shadow: 0 -8px 30px rgba(0,0,0,0.6);
+        }
+        .sheet-drag {
+          width: 40px;
+          height: 4px;
+          background: #5f6368;
+          border-radius: 2px;
+          margin: 0 auto 16px;
+        }
+        .sheet-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 18px;
+        }
+        .grid-btn {
+          background: #2b2c2f;
+          border: none;
+          border-radius: 14px;
+          padding: 12px 6px;
+          color: #e3e3e3;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          cursor: pointer;
+        }
         .grid-icon { font-size: 20px; }
         .feat-list { display: flex; flex-direction: column; gap: 6px; }
-        .feat-item { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+        .feat-item {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          cursor: pointer;
+        }
         .feat-item:hover { background: #2b2c2f; }
         .feat-icon { font-size: 20px; }
         .f-title { font-size: 14px; font-weight: 500; }
         .f-sub { font-size: 12px; color: #9aa0a6; }
 
-        /* Input Bottom */
-        .input-bar { display: flex; align-items: center; padding: 10px 14px; background: #1e1f20; border-top: 1px solid #2e2f30; gap: 10px; }
-        .btn-round { width: 40px; height: 40px; border-radius: 50%; border: none; background: #2b2c2f; color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-        .btn-round.send { background: #1a73e8; font-size: 16px; }
-        .btn-round.send:disabled { background: #3c4043; color: #888; cursor: not-allowed; }
-        .chat-in { flex: 1; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 20px; padding: 10px 16px; color: #fff; font-size: 14.5px; outline: none; resize: none; max-height: 100px; }
+        /* Baris Input Terkunci di Bagian Bawah */
+        .input-bar {
+          position: sticky;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          display: flex;
+          align-items: center;
+          padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+          background: #1e1f20;
+          border-top: 1px solid #2e2f30;
+          gap: 10px;
+          flex-shrink: 0;
+          z-index: 100;
+        }
+        .btn-round {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          border: none;
+          background: #2b2c2f;
+          color: #fff;
+          font-size: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .btn-round.send {
+          background: #1a73e8;
+          font-size: 17px;
+        }
+        .btn-round.send:disabled {
+          background: #3c4043;
+          color: #888;
+          cursor: not-allowed;
+        }
+        .chat-in {
+          flex: 1;
+          background: #2b2c2f;
+          border: 1px solid #3c4043;
+          border-radius: 22px;
+          padding: 10px 16px;
+          color: #fff;
+          font-size: 14.5px;
+          outline: none;
+          resize: none;
+          max-height: 110px;
+        }
       `}</style>
 
-      {/* Navbar */}
+      {/* Header Sticky (Kerapatan Tinggi) */}
       <nav className="chat-nav">
         <span className="brand-badge">X AWD</span>
         <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="model-btn">
@@ -195,7 +432,7 @@ export default function App() {
         </button>
       </nav>
 
-      {/* Modal Pemilih Model */}
+      {/* Popover Pencarian Model */}
       {isDropdownOpen && (
         <>
           <div className="dropdown-overlay" onClick={() => setIsDropdownOpen(false)} />
@@ -206,6 +443,7 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="search-in"
+              autoFocus
             />
             <div className="model-items">
               {models
@@ -231,7 +469,7 @@ export default function App() {
         </>
       )}
 
-      {/* Area Chat Berkelanjutan */}
+      {/* Area Pesan Berkelanjutan */}
       <div className="chat-history">
         {messages.map(msg => (
           <div key={msg.id} className={`msg-line ${msg.role}`}>
@@ -254,7 +492,7 @@ export default function App() {
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Sheet Lampiran Pintas */}
+      {/* Modal Action Sheet Lampiran */}
       {isAttachOpen && (
         <div className="sheet-backdrop" onClick={() => setIsAttachOpen(false)}>
           <div className="sheet-body" onClick={e => e.stopPropagation()}>
@@ -305,7 +543,7 @@ export default function App() {
         }}
       />
 
-      {/* Bar Input Pesan Bawah */}
+      {/* Sticky Bottom Bar */}
       <div className="input-bar">
         <button
           type="button"
