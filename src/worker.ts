@@ -44,14 +44,86 @@ function parseUpstreamResponse(text: string): string {
   return "";
 }
 
-async function sendChatAction(chatId: number, action = "typing") {
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendChatAction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, action })
-    });
-  } catch (_) {}
+async function callSingleEngine(messages: any[], modelName: string, timeoutMs = 25000): Promise<string> {
+  for (const apiKey of PRIMARY_KEYS) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      const res = await fetch(`${TARGET_BASE}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages,
+          temperature: 0.7
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      const raw = await res.text();
+      const parsed = parseUpstreamResponse(raw);
+      if (res.ok && parsed) return parsed;
+    } catch (_) {}
+  }
+  return "";
+}
+
+// Fallback cascade normal
+async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-high"): Promise<string> {
+  const plan = [requestedModel, "ag/gemini-3.8-flash-medium", "gh/gpt-4o"];
+  for (const target of plan) {
+    const ans = await callSingleEngine(messages, target);
+    if (ans) return ans;
+  }
+  return "Maaf, seluruh cluster AI sedang mengalami antrean. Coba beberapa saat lagi.";
+}
+
+// Combo Epic: 3 Model Paralel + 1 Arbiter Synthesizer
+async function executeComboEpic(messages: any[]): Promise<{ reply: string; perspectives: Record<string, string> }> {
+  const promptUser = messages[messages.length - 1]?.content || "";
+
+  // 1. Eksekusi paralel 3 engine lintas klaster
+  const [claudeAns, geminiAns, gptAns] = await Promise.all([
+    callSingleEngine(messages, "ag/claude-sonnet-4-6", 20000),
+    callSingleEngine(messages, "ag/gemini-3.8-flash-high", 20000),
+    callSingleEngine(messages, "gh/gpt-4o", 20000)
+  ]);
+
+  const perspectives: Record<string, string> = {
+    "Claude Sonnet 4.6": claudeAns || "(Tidak merespons)",
+    "Gemini 3.8 Flash": geminiAns || "(Tidak merespons)",
+    "GPT-4o": gptAns || "(Tidak merespons)"
+  };
+
+  // 2. Synthesizer / Juri Konsensus
+  const judgePrompt = `Anda adalah Arbiter Konsensus Cerdas X AWD (Mode Combo Epic).
+Pertanyaan Pengguna: "${promptUser}"
+
+Berikut draf respons dari 3 engine AI berbeda:
+[Model Claude]: ${claudeAns || "Tidak tersedia"}
+[Model Gemini]: ${geminiAns || "Tidak tersedia"}
+[Model GPT-4o]: ${gptAns || "Tidak tersedia"}
+
+Tugas Anda:
+1. Evaluasi kebenaran, akurasi, dan kedalaman ketiga jawaban di atas.
+2. Buang halusinasi, asumsi keliru, atau inkonsistensi.
+3. Rangkum dan susun satu kesimpulan jawaban terbaik yang sangat terstruktur, jelas, dan kredibel.`;
+
+  const finalConsensus = await callSingleEngine(
+    [{ role: "user", content: judgePrompt }],
+    "ag/gemini-3.8-flash-high",
+    25000
+  );
+
+  return {
+    reply: finalConsensus || claudeAns || geminiAns || gptAns || "Gagal melakukan sintesis konsensus.",
+    perspectives
+  };
 }
 
 async function sendTelegramMessage(chatId: number, text: string) {
@@ -62,57 +134,6 @@ async function sendTelegramMessage(chatId: number, text: string) {
       body: JSON.stringify({ chat_id: chatId, text })
     });
   } catch (_) {}
-}
-
-// Ambil URL publik langsung file dari Telegram
-async function getTelegramFileDirectUrl(fileId: string): Promise<string | null> {
-  try {
-    const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-    const fileData: any = await fileRes.json();
-    if (fileData.ok && fileData.result?.file_path) {
-      return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
-    }
-  } catch (_) {}
-  return null;
-}
-
-// Eksekusi Model Vision
-async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-high"): Promise<string> {
-  const executionPlan = [
-    requestedModel,
-    "ag/gemini-3.8-flash-medium",
-    "gh/gpt-4o",
-    "ag/gemini-3.8-flash-low"
-  ];
-
-  for (const target of executionPlan) {
-    for (const apiKey of PRIMARY_KEYS) {
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 25000);
-
-        const res = await fetch(`${TARGET_BASE}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: target,
-            messages,
-            temperature: 0.7
-          }),
-          signal: controller.signal
-        });
-        clearTimeout(timer);
-
-        const rawText = await res.text();
-        const extracted = parseUpstreamResponse(rawText);
-        if (res.ok && extracted) return extracted;
-      } catch (_) {}
-    }
-  }
-  return "Maaf, antrean model vision sedang sibuk. Silakan coba kembali.";
 }
 
 export default {
@@ -130,17 +151,28 @@ export default {
       });
     }
 
-    // 1. Endpoint Web App Playground
+    // 1. Endpoint Playground Web
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
+        const isCombo = Boolean(body.isCombo);
         const requestedModel = (body.model || "ag/gemini-3.8-flash-high").trim();
         const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0
           ? body.messages
           : [{ role: "user", content: body.prompt || "" }];
 
-        const reply = await executeAI(incomingMessages, requestedModel);
-        return json({ success: true, model: requestedModel, reply });
+        if (isCombo) {
+          const comboResult = await executeComboEpic(incomingMessages);
+          return json({
+            success: true,
+            model: "Combo Epic (Consensus Trio)",
+            reply: comboResult.reply,
+            perspectives: comboResult.perspectives
+          });
+        } else {
+          const reply = await executeAI(incomingMessages, requestedModel);
+          return json({ success: true, model: requestedModel, reply });
+        }
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
       }
@@ -152,74 +184,37 @@ export default {
         const update: any = await request.json();
         const msg = update?.message;
 
-        if (msg) {
+        if (msg && msg.text) {
           const chatId = msg.chat.id;
+          const userText = msg.text.trim();
 
-          const backgroundTask = (async () => {
-            // A. Pesan Teks Murni
-            if (msg.text) {
-              const text = msg.text.trim();
-              if (text.startsWith("/start")) {
-                await sendTelegramMessage(chatId, "Halo! Saya bot asisten cerdas X AWD. Kirimkan pertanyaan, foto, atau dokumen untuk saya analisis.");
-                return;
-              }
-              if (text.startsWith("/help")) {
-                await sendTelegramMessage(chatId, "Kirimkan teks atau foto/dokumen untuk dianalisis langsung oleh engine.");
-                return;
-              }
-
-              await sendChatAction(chatId, "typing");
-              const reply = await executeAI([{ role: "user", content: text }]);
-              await sendTelegramMessage(chatId, reply);
+          const task = (async () => {
+            if (userText.startsWith("/start")) {
+              await sendTelegramMessage(chatId, "Halo! Bot X AWD siap melayani obrolan cerdas dan mode Combo Epic.");
+              return;
+            }
+            if (userText.startsWith("/combo")) {
+              const query = userText.replace("/combo", "").trim() || "Jelaskan konsensus terbaik untuk topik ini.";
+              const comboRes = await executeComboEpic([{ role: "user", content: query }]);
+              await sendTelegramMessage(chatId, `⚡ [HASIL KONSENSUS COMBO EPIC]\n\n${comboRes.reply}`);
               return;
             }
 
-            // B. Foto atau Dokumen Gambar
-            let fileId: string | null = null;
-            if (Array.isArray(msg.photo) && msg.photo.length > 0) {
-              // Ambil ukuran resolusi sedang agar pengunduhan cepat dan tidak memicu timeout
-              fileId = msg.photo.length > 1 ? msg.photo[msg.photo.length - 2].file_id : msg.photo[0].file_id;
-            } else if (msg.document && msg.document.mime_type?.startsWith("image/")) {
-              fileId = msg.document.file_id;
-            }
-
-            if (fileId) {
-              await sendChatAction(chatId, "upload_photo");
-              const directImageUrl = await getTelegramFileDirectUrl(fileId);
-              const caption = msg.caption || "Analisis dan jelaskan detail gambar ini secara lengkap.";
-
-              if (directImageUrl) {
-                const visionPayload = [
-                  {
-                    role: "user",
-                    content: [
-                      { type: "text", text: caption },
-                      { type: "image_url", image_url: { url: directImageUrl } }
-                    ]
-                  }
-                ];
-
-                await sendChatAction(chatId, "typing");
-                const visionReply = await executeAI(visionPayload, "ag/gemini-3.8-flash-high");
-                await sendTelegramMessage(chatId, visionReply);
-              } else {
-                await sendTelegramMessage(chatId, "Gagal mendapatkan URL gambar dari Telegram.");
-              }
-            }
+            const res = await executeAI([{ role: "user", content: userText }]);
+            await sendTelegramMessage(chatId, res);
           })();
 
           if (ctx && typeof ctx.waitUntil === "function") {
-            ctx.waitUntil(backgroundTask);
+            ctx.waitUntil(task);
           } else {
-            await backgroundTask;
+            await task;
           }
         }
       } catch (_) {}
 
-      // Berikan respons HTTP 200 instan ke Telegram agar koneksi webhook tidak freeze
       return json({ ok: true });
     }
 
-    return json({ message: "X AWD Engine Ready" });
+    return json({ message: "X AWD Core Engine + Combo Epic Active" });
   }
 };
