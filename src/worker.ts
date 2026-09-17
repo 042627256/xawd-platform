@@ -107,7 +107,54 @@ export default {
         else if (task === "coding") payload.temperature = 0.1;
         else payload.temperature = 0.7;
 
+        
+    const fallbackQueue = [
+      model || "Oc-full/glm/glm-5.3",
+      "Oc-full/glm/glm-5.1",
+      "Oc-uni/z-ai/glm-5.2",
+      "Oc-full/cc/claude-sonnet-5",
+      "gh/gpt-4o",
+      "Oc-uni/deepseek/deepseek-v4-pro"
+    ];
+
+    let replyText = "";
+    let usedModel = "";
+    let lastError = "";
+
+    for (const targetModel of fallbackQueue) {
+      try {
+        payload.model = targetModel;
         const upstreamRes = await fetch(`${targetBase}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${targetKey}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const raw = await upstreamRes.text();
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (_) {}
+
+        if (upstreamRes.ok && parsed && parsed.choices?.[0]?.message?.content) {
+          replyText = parsed.choices[0].message.content;
+          usedModel = targetModel;
+          break;
+        } else if (parsed && parsed.error?.message) {
+          lastError = parsed.error.message;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
+
+    if (replyText) {
+      return json({ success: true, model: usedModel, reply: replyText });
+    } else {
+      return json({ success: false, error: lastError || "Semua provider antrean sedang limit." }, 500);
+    }
+    const upstreamRes_dummy = null; if (false) fetch(`${targetBase}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
