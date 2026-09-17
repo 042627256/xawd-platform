@@ -26,7 +26,7 @@ export default function App() {
 
   const fetchModels = async () => {
     try {
-      const res = await fetch('https://api.xawd.my.id/api/models', {
+      const res = await fetch('https://api.xawd.my.idhttps://api.xawd.my.id/api/models', {
         headers: {
           'x-custom-key': customKey,
           'x-custom-base': customBase
@@ -58,7 +58,7 @@ export default function App() {
     setIsExecuting(true);
     setReply('');
     try {
-      const res = await fetch('https://api.xawd.my.id/api/playground/execute', {
+      const res = await fetch('https://api.xawd.my.idhttps://api.xawd.my.id/api/playground/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
