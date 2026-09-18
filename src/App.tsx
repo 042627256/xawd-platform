@@ -75,6 +75,18 @@ export default function App() {
       });
   }, [models, search, selectedTier, sortBy]);
 
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSend = async (textToSendRaw?: string) => {
     const textToSend = textToSendRaw || inputPrompt;
     if (!textToSend.trim() || isExecuting) return;
@@ -100,6 +112,11 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          enableFallback,
+          enableRoundRobin,
+          comboPreset,
+          tier: tierFilter === "ALL" ? "ULTRA" : tierFilter,
+          
           model: selectedModel,
           messages: conversationPayload,
           prompt: textToSend.trim(),
@@ -326,6 +343,36 @@ export default function App() {
             </button>
           </div>
         </header>
+      {/* Toolbar Kontrol Manual Terpadu (Toggle Fallback, Round Robin & Preset Combo) */}
+      <div data-control-toolbar="true" style={{ display: "flex", gap: "12px", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", background: "#0d1527", borderBottom: "1px solid #1f293d", fontSize: "0.78rem", zIndex: 9, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", color: enableFallback ? "#10b981" : "#94a3b8", fontWeight: 600 }}>
+            <input type="checkbox" checked={enableFallback} onChange={e => setEnableFallback(e.target.checked)} style={{ accentColor: "#10b981", cursor: "pointer" }} />
+            <span>Smart Fallback In-Tier {enableFallback ? "(ON)" : "(OFF)"}</span>
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", color: enableRoundRobin ? "#38bdf8" : "#94a3b8", fontWeight: 600 }}>
+            <input type="checkbox" checked={enableRoundRobin} onChange={e => setEnableRoundRobin(e.target.checked)} style={{ accentColor: "#38bdf8", cursor: "pointer" }} />
+            <span>Round Robin {enableRoundRobin ? "(ON)" : "(OFF)"}</span>
+          </label>
+        </div>
+
+        {isCombo && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ color: "#facc15", fontWeight: 700 }}>Preset Combo:</span>
+            <select
+              value={comboPreset}
+              onChange={e => setComboPreset(e.target.value)}
+              style={{ background: "#1e293b", color: "#f8fafc", border: "1px solid #334155", borderRadius: "5px", padding: "3px 8px", fontSize: "0.75rem", outline: "none", cursor: "pointer" }}
+            >
+              <option value="epic">⚡ Epic Frontier Trio (Dawn, Astra, Sonnet)</option>
+              <option value="ultra">⚡ Ultra Apex (Grok 4.6, Astra, Opus 5)</option>
+              <option value="high">⚡ High Logic & Code (Terra, Sonnet, DeepSeek)</option>
+              <option value="medium">⚡ Medium Balanced (Luna, Gemini Flash, GPT-4o)</option>
+              <option value="low">⚡ Low Speed Trio</option>
+            </select>
+          </div>
+        )}
+      </div>
 
         <main className="chat-scroll-row">
           {messages.map(msg => (
@@ -414,7 +461,7 @@ export default function App() {
             {/* Bilah Kontrol Filter Tier & Pengurutan */}
             <div className="filter-controls-row">
               <div className="tier-pills">
-                {['ALL', 'ULTRA', 'HIGH', 'MEDIUM', 'LOW'].map(tier => (
+                {['ALL', 'ULTRA', 'HIGH', 'MEDIUM', 'LOW', 'FREE'].map(tier => (
                   <button
                     key={tier}
                     onClick={() => setSelectedTier(tier)}
