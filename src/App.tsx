@@ -31,6 +31,9 @@ export default function App() {
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'name' | 'tier' | 'provider'>('name');
   const [isComboActive, setIsComboActive] = useState(false);
+  const [comboPreset, setComboPreset] = useState("epic");
+  const [enableFallback, setEnableFallback] = useState(false);
+  const [enableRoundRobin, setEnableRoundRobin] = useState(false);
 
   // State Chat & Action Sheet
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -326,6 +329,32 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        {/* FACELIFT CONTROLS TOOLBAR */}
+        <div className="facelift-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", background: "#1a1b1e", borderBottom: "1px solid #28292a", fontSize: "12px", zIndex: 90, flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "5px", cursor: "pointer", color: enableFallback ? "#10b981" : "#9aa0a6", fontWeight: 600 }}>
+              <input type="checkbox" checked={enableFallback} onChange={e => setEnableFallback(e.target.checked)} style={{ accentColor: "#10b981" }} />
+              <span>Smart Fallback {enableFallback ? "(ON)" : "(OFF)"}</span>
+            </label>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "5px", cursor: "pointer", color: enableRoundRobin ? "#38bdf8" : "#9aa0a6", fontWeight: 600 }}>
+              <input type="checkbox" checked={enableRoundRobin} onChange={e => setEnableRoundRobin(e.target.checked)} style={{ accentColor: "#38bdf8" }} />
+              <span>Round Robin {enableRoundRobin ? "(ON)" : "(OFF)"}</span>
+            </label>
+          </div>
+          {isComboActive && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ color: "#ffd700", fontWeight: "bold" }}>Preset:</span>
+              <select value={comboPreset} onChange={e => setComboPreset(e.target.value)} style={{ background: "#282a2c", color: "#ffd700", border: "1px solid #7c6818", borderRadius: "6px", padding: "2px 6px", fontSize: "11px", fontWeight: "bold", outline: "none" }}>
+                <option value="epic">⚡ Epic Frontier Trio</option>
+                <option value="ultra">⚡ Ultra Apex</option>
+                <option value="high">⚡ High Logic & Code</option>
+                <option value="medium">⚡ Medium Balanced</option>
+                <option value="low">⚡ Low Speed Trio</option>
+              </select>
+            </div>
+          )}
+        </div>
 
         <main className="chat-scroll-row">
           {messages.map(msg => (
