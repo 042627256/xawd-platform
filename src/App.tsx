@@ -23,7 +23,6 @@ export default function App() {
   const [models, setModels] = useState<ModelItem[]>(staticModelList as ModelItem[]);
   const [selectedModel, setSelectedModel] = useState<string>("ag/gemini-3.8-flash-high");
 
-  // Controls State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("ALL");
@@ -34,7 +33,6 @@ export default function App() {
   const [enableFallback, setEnableFallback] = useState(false);
   const [enableRoundRobin, setEnableRoundRobin] = useState(false);
 
-  // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -46,8 +44,8 @@ export default function App() {
   ]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isAttachOpen, setIsAttachOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -85,7 +83,6 @@ export default function App() {
     };
   }, [models, selectedModel]);
 
-  
   const handleFeaturePick = (name: string) => {
     setIsAttachOpen(false);
     if (name === "Kamera" || name === "Files" || name === "Gambar" || name === "Drive") {
@@ -158,7 +155,6 @@ export default function App() {
         })
       });
 
-      // Anti-Crash Response Parser
       const rawText = await res.text();
       let data: any = {};
       try {
@@ -244,11 +240,21 @@ export default function App() {
         .perspective-card { padding: 6px 10px; background: #232427; border-radius: 6px; }
         .perspective-title { font-weight: 700; color: #8ab4f8; margin-bottom: 2px; }
 
-        .footer-fixed-row { display: flex; align-items: center; padding: 10px 14px; background: #1e1f20; border-top: 1px solid #28292a; gap: 10px; z-index: 100; }
-        .btn-round { width: 42px; height: 42px; border-radius: 50%; border: none; background: #2b2c2f; color: #fff; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-        .btn-round.send { background: #1a73e8; font-size: 17px; }
+        .footer-fixed-row { display: flex; align-items: flex-end; padding: 12px 16px; background: #1e1f20; border-top: 1px solid #28292a; gap: 12px; z-index: 100; }
+        .btn-round { width: 46px; height: 46px; border-radius: 50%; border: none; background: #2b2c2f; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-bottom: 3px; }
+        .btn-round.send { background: #1a73e8; font-size: 18px; }
         .btn-round.send:disabled { background: #3c4043; color: #888; cursor: not-allowed; }
-        .chat-in { flex: 1; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 22px; padding: 10px 16px; color: #fff; font-size: 14.5px; outline: none; resize: none; font-family: inherit; }
+        .chat-in { flex: 1; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 18px; padding: 14px 18px; color: #fff; font-size: 15px; line-height: 1.5; outline: none; resize: none; min-height: 52px; max-height: 180px; font-family: inherit; }
+        .chat-in:focus { border-color: #1a73e8; }
+
+        .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
+        .sheet-body { width: 100%; max-width: 600px; background: #1e1f20; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 18px 20px 30px; max-height: 72vh; overflow-y: auto; }
+        .sheet-drag { width: 44px; height: 5px; background: #5f6368; border-radius: 3px; margin: 0 auto 16px; }
+        .sheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+        .grid-btn { background: #2b2c2f; border: none; border-radius: 14px; padding: 12px 6px; color: #e3e3e3; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+        .feat-list { display: flex; flex-direction: column; gap: 6px; }
+        .feat-item { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: #e3e3e3; }
+        .feat-item:hover { background: #2b2c2f; }
 
         .dropdown-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; }
         .dropdown-box { position: fixed; top: 60px; left: 16px; right: 16px; max-width: 520px; margin: 0 auto; background: #232427; border: 1px solid #3c4043; border-radius: 16px; padding: 14px; z-index: 210; box-shadow: 0 12px 32px rgba(0,0,0,0.7); }
@@ -268,25 +274,7 @@ export default function App() {
         .t-badge.medium { background: #4a3b1a; color: #fdd663; }
         .t-badge.low { background: #1e3a29; color: #81c995; }
         .t-badge.free { background: #1a73e8; color: #fff; }
-      `}
-        /* Area Input Diperbesar */
-        .footer-fixed-row { display: flex; align-items: flex-end; padding: 12px 16px; background: #1e1f20; border-top: 1px solid #28292a; gap: 12px; z-index: 100; }
-        .chat-in { flex: 1; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 18px; padding: 14px 18px; color: #fff; font-size: 15px; line-height: 1.5; outline: none; resize: none; min-height: 52px; max-height: 180px; font-family: inherit; }
-        .chat-in:focus { border-color: #1a73e8; }
-        .btn-round { width: 46px; height: 46px; border-radius: 50%; border: none; background: #2b2c2f; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-bottom: 3px; }
-        .btn-round.send { background: #1a73e8; font-size: 18px; }
-
-        /* Action Sheet Modal */
-        .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
-        .sheet-body { width: 100%; max-width: 600px; background: #1e1f20; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 18px 20px 30px; max-height: 72vh; overflow-y: auto; }
-        .sheet-drag { width: 44px; height: 5px; background: #5f6368; border-radius: 3px; margin: 0 auto 16px; }
-        .sheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
-        .grid-btn { background: #2b2c2f; border: none; border-radius: 14px; padding: 12px 6px; color: #e3e3e3; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
-        .feat-list { display: flex; flex-direction: column; gap: 6px; }
-        .feat-item { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: #e3e3e3; }
-        .feat-item:hover { background: #2b2c2f; }
-
-      </style>
+      `}</style>
 
       <div className="xawd-app-shell">
         <header className="header-fixed-row">
@@ -313,7 +301,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Major Facelift Toolbar */}
         <div className="facelift-toolbar">
           <div className="facelift-toggles">
             <label className="facelift-label" style={{ color: enableFallback ? '#10b981' : '#9aa0a6' }}>
@@ -354,7 +341,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Chat Body */}
         <main className="chat-scroll-row">
           {messages.map(msg => (
             <div key={msg.id} className={`msg-line ${msg.role}`}>
@@ -391,14 +377,11 @@ export default function App() {
           <div ref={chatBottomRef} />
         </main>
 
-        {/* Footer */}
-        
-        {/* Preview Badge Screenshot Clipboard */}
         {attachedImage && (
-          <div className="preview-badge-container" style={{ padding: "8px 16px", background: "#1a1b1e", display: "flex", alignItems: "center", gap: "12px", borderTop: "1px solid #28292a" }}>
-            <img src={attachedImage} alt="Preview" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", border: "1px solid #10b981" }} />
-            <span style={{ fontSize: "12px", color: "#10b981", flex: 1, fontWeight: 600 }}>Screenshot terlampir siap dikirim</span>
-            <button type="button" onClick={() => setAttachedImage(null)} style={{ background: "transparent", border: "none", color: "#f28b82", fontSize: "13px", cursor: "pointer", fontWeight: 600 }}>✕ Hapus</button>
+          <div style={{ padding: '8px 16px', background: '#1a1b1e', display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid #28292a' }}>
+            <img src={attachedImage} alt="Preview" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #10b981' }} />
+            <span style={{ fontSize: '12px', color: '#10b981', flex: 1, fontWeight: 600 }}>Screenshot terlampir siap dikirim</span>
+            <button type="button" onClick={() => setAttachedImage(null)} style={{ background: 'transparent', border: 'none', color: '#f28b82', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>✕ Hapus</button>
           </div>
         )}
 
@@ -426,10 +409,11 @@ export default function App() {
             {attachedImage ? '✓' : '+'}
           </button>
           <textarea
-            rows={2} onPaste={handlePasteClipboard}
+            rows={2}
             placeholder={isComboActive ? "Ketik prompt untuk konsensus Combo..." : "Ketik pesan untuk X AWD..."}
             value={inputPrompt}
             onChange={e => setInputPrompt(e.target.value)}
+            onPaste={handlePasteClipboard}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -448,7 +432,44 @@ export default function App() {
           </button>
         </footer>
 
-        {/* Model Picker Modal */}
+        {isAttachOpen && (
+          <div className="sheet-backdrop" onClick={() => setIsAttachOpen(false)}>
+            <div className="sheet-body" onClick={e => e.stopPropagation()}>
+              <div className="sheet-drag" />
+              <div className="sheet-grid">
+                {[
+                  { name: "Kamera", icon: "📷" },
+                  { name: "Gambar", icon: "🖼️" },
+                  { name: "Files", icon: "📁" },
+                  { name: "Drive", icon: "☁️" }
+                ].map(item => (
+                  <button key={item.name} type="button" onClick={() => handleFeaturePick(item.name)} className="grid-btn">
+                    <span style={{ fontSize: "22px" }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="feat-list">
+                {[
+                  { name: "Chat", desc: "Mode dialog reguler & instruksi teks", icon: "💬" },
+                  { name: "Voices", desc: "Perintah suara & sintesis audio", icon: "🎙️" },
+                  { name: "Video", desc: "Analisis frame visual dinamis", icon: "🎥" },
+                  { name: "Canvas", desc: "Editor interaktif kode & dokumen", icon: "🎨" }
+                ].map(f => (
+                  <div key={f.name} onClick={() => handleFeaturePick(f.name)} className="feat-item">
+                    <span style={{ fontSize: "19px" }}>{f.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: "14px" }}>{f.name}</div>
+                      <div style={{ fontSize: "11px", color: "#9aa0a6" }}>{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {isDropdownOpen && (
           <>
             <div className="dropdown-overlay" onClick={() => setIsDropdownOpen(false)} />
@@ -505,46 +526,6 @@ export default function App() {
             </div>
           </>
         )}
-      
-        {/* Action Sheet Menu Multimodal */}
-        {isAttachOpen && (
-          <div className="sheet-backdrop" onClick={() => setIsAttachOpen(false)}>
-            <div className="sheet-body" onClick={e => e.stopPropagation()}>
-              <div className="sheet-drag" />
-              <div className="sheet-grid">
-                {[
-                  { name: "Kamera", icon: "📷" },
-                  { name: "Gambar", icon: "🖼️" },
-                  { name: "Files", icon: "📁" },
-                  { name: "Drive", icon: "☁️" }
-                ].map(item => (
-                  <button key={item.name} type="button" onClick={() => handleFeaturePick(item.name)} className="grid-btn">
-                    <span style={{ fontSize: "22px" }}>{item.icon}</span>
-                    <span>{item.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="feat-list">
-                {[
-                  { name: "Chat", desc: "Mode dialog reguler & instruksi teks", icon: "💬" },
-                  { name: "Voices", desc: "Perintah suara & sintesis audio", icon: "🎙️" },
-                  { name: "Video", desc: "Analisis frame visual dinamis", icon: "🎥" },
-                  { name: "Canvas", desc: "Editor interaktif kode & dokumen", icon: "🎨" }
-                ].map(f => (
-                  <div key={f.name} onClick={() => handleFeaturePick(f.name)} className="feat-item">
-                    <span style={{ fontSize: "19px" }}>{f.icon}</span>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: "14px" }}>{f.name}</div>
-                      <div style={{ fontSize: "11px", color: "#9aa0a6" }}>{f.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );
