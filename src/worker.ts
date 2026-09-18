@@ -14,7 +14,7 @@ function json(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
       ...corsHeaders()
     }
   });
@@ -61,21 +61,26 @@ function classifyModel(id: string) {
   };
 }
 
+// Parser universal: menangani JSON standar, SSE streaming chunks, dan membuang ping comment
 function parseStreamOrJson(rawText: string): string {
   if (!rawText) return "";
+  const trimmedText = rawText.trim();
+
+  // Coba parse JSON langsung
   try {
-    const data = JSON.parse(rawText);
+    const data = JSON.parse(trimmedText);
     const content = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.delta?.content;
     if (content) return content;
   } catch (_) {}
 
+  // Parse baris demi baris jika formatnya SSE stream
   let combined = "";
-  const lines = rawText.split(/\r?\n/);
+  const lines = trimmedText.split(/\r?\n/);
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+    const l = line.trim();
+    if (l.startsWith("data:") && !l.includes("[DONE]")) {
       try {
-        const chunk = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+        const chunk = JSON.parse(l.replace(/^data:\s*/, ""));
         combined += chunk?.choices?.[0]?.delta?.content || chunk?.choices?.[0]?.message?.content || "";
       } catch (_) {}
     }
@@ -83,7 +88,7 @@ function parseStreamOrJson(rawText: string): string {
   return combined.trim();
 }
 
-async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 60000): Promise<{ ok: boolean; content: string }> {
+async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 45000): Promise<{ ok: boolean; content: string }> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -112,19 +117,20 @@ async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 
   return { ok: false, content: "" };
 }
 
+// Combo Epic Trio Frontier Konsensus
 async function executeComboEpic(messages: any[]): Promise<{ reply: string; perspectives: Record<string, string> }> {
   const promptUser = messages[messages.length - 1]?.content || "";
 
   const [engineA, engineB, engineC] = await Promise.all([
-    callStrictEngine(messages, "Atria-Dawn-Preview/Atria-Dawn-Preview", 75000),
-    callStrictEngine(messages, "Oc-uni/gpt-6-astra", 75000),
-    callStrictEngine(messages, "ag/claude-sonnet-4-6", 60000)
+    callStrictEngine(messages, "Atria-Dawn-Preview/Atria-Dawn-Preview", 40000),
+    callStrictEngine(messages, "Oc-uni/gpt-6-astra", 40000),
+    callStrictEngine(messages, "ag/claude-sonnet-4-6", 40000)
   ]);
 
   const perspectives: Record<string, string> = {
-    "Atria Dawn Preview": engineA.ok ? engineA.content : "(Model tidak merespons)",
-    "GPT-6 Astra": engineB.ok ? engineB.content : "(Model tidak merespons)",
-    "Claude Sonnet 4.6": engineC.ok ? engineC.content : "(Model tidak merespons)"
+    "Atria Dawn Preview": engineA.ok ? engineA.content : "(Model upstream sedang sibuk / antrean penuh)",
+    "GPT-6 Astra": engineB.ok ? engineB.content : "(Model upstream sedang sibuk / antrean penuh)",
+    "Claude Sonnet 4.6": engineC.ok ? engineC.content : "(Model upstream sedang sibuk / antrean penuh)"
   };
 
   const judgePrompt = `Anda adalah Arbiter Konsensus Cerdas X AWD (Mode Combo Epic).
@@ -136,17 +142,17 @@ Berikut draf sudut pandang dari 3 engine frontier:
 [Claude Sonnet 4.6]: ${engineC.content || "Tidak merespons"}
 
 Tugas Anda:
-1. Evaluasi keakuratan dan pandangan tiap engine secara tajam.
+1. Evaluasi keakuratan dan pandangan tiap engine secara tajam dan objektif.
 2. Buat satu sintesis kesimpulan jawaban akhir yang utuh, presisi, dan terstruktur.`;
 
   const arbiterRes = await callStrictEngine(
     [{ role: "user", content: judgePrompt }],
     "ag/claude-sonnet-4-6",
-    60000
+    45000
   );
 
   return {
-    reply: arbiterRes.ok ? arbiterRes.content : (engineA.content || engineB.content || engineC.content || "Konsensus gagal didapatkan."),
+    reply: arbiterRes.ok ? arbiterRes.content : (engineC.content || engineB.content || engineA.content || "Konsensus gagal dirumuskan."),
     perspectives
   };
 }
@@ -159,7 +165,7 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
-    // Endpoint Live Fetch Model Langsung dari Upstream
+    // 1. Endpoint Live Fetch Models
     if (url.pathname === "/api/models" && request.method === "GET") {
       try {
         const upstreamRes = await fetch(`${TARGET_BASE}/models`, {
@@ -169,18 +175,13 @@ export default {
         const rawList = data.data || data || [];
         const modelIds = rawList.map((m: any) => m.id || m).filter(Boolean);
         const dynamicModels = modelIds.map(classifyModel);
-
-        return json({
-          success: true,
-          count: dynamicModels.length,
-          data: dynamicModels
-        });
+        return json({ success: true, count: dynamicModels.length, data: dynamicModels });
       } catch (err: any) {
         return json({ success: false, error: err.message }, 500);
       }
     }
 
-    // Endpoint Chat Execution (Murni SSE Stream Pipe untuk Single Chat)
+    // 2. Endpoint Chat Playground
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
@@ -190,6 +191,7 @@ export default {
           ? body.messages
           : [{ role: "user", content: body.prompt || "" }];
 
+        // Jika mode combo, jalankan konsensus 3 engine
         if (isCombo) {
           const comboResult = await executeComboEpic(incomingMessages);
           return json({
@@ -200,44 +202,67 @@ export default {
           });
         }
 
-        // Single Stream Pipeline - Langsung alirkan tanpa buffer dan tanpa silent fallback
-        const upstreamRes = await fetch(`${TARGET_BASE}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${PRIMARY_KEY}`
-          },
-          body: JSON.stringify({
+        // Mode single model: panggil upstream langsung dan kembalikan JSON bersih
+        const result = await callStrictEngine(incomingMessages, requestedModel, 45000);
+        if (result.ok) {
+          return json({
+            success: true,
             model: requestedModel,
-            messages: incomingMessages,
-            temperature: 0.7,
-            stream: true
-          })
-        });
-
-        if (!upstreamRes.ok) {
-          const errText = await upstreamRes.text();
+            reply: result.content
+          });
+        } else {
           return json({
             success: false,
             model: requestedModel,
-            error: `Upstream error (${upstreamRes.status}): ${errText}`
-          }, upstreamRes.status);
+            error: `Upstream model '${requestedModel}' sedang sibuk atau tidak merespons. Tidak ada silent fallback.`
+          }, 502);
         }
-
-        return new Response(upstreamRes.body, {
-          status: 200,
-          headers: {
-            "Content-Type": "text/event-stream; charset=utf-8",
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            ...corsHeaders()
-          }
-        });
       } catch (err: any) {
-        return json({ success: false, error: err.message }, 500);
+        return json({ success: false, error: err.message }, 400);
       }
     }
 
-    return json({ message: "X AWD Pure Engine Gateway Active" });
+    // 3. Telegram Bot Webhook
+    if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
+      try {
+        const update: any = await request.json();
+        const msg = update?.message;
+        if (msg && msg.text) {
+          const chatId = msg.chat.id;
+          const userText = msg.text.trim();
+          const task = (async () => {
+            if (userText.startsWith("/start")) {
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: "Halo! Sistem X AWD aktif." })
+              });
+              return;
+            }
+            if (userText.startsWith("/combo")) {
+              const query = userText.replace("/combo", "").trim() || "Beri saya panduan.";
+              const comboRes = await executeComboEpic([{ role: "user", content: query }]);
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: `⚡ [KONSENSUS COMBO EPIC]\n\n${comboRes.reply}`.slice(0, 4000) })
+              });
+              return;
+            }
+            const res = await callStrictEngine([{ role: "user", content: userText }], "Oc-uni/gpt-6-astra");
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: (res.ok ? res.content : "Upstream sedang memproses antrean.").slice(0, 4000) })
+            });
+          })();
+          if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(task);
+          else await task;
+        }
+      } catch (_) {}
+      return json({ ok: true });
+    }
+
+    return json({ message: "X AWD Universal Pure Gateway Online" });
   }
 };
