@@ -44,7 +44,8 @@ function parseUpstreamResponse(text: string): string {
   return "";
 }
 
-async function callSingleEngine(messages: any[], modelName: string, timeoutMs = 25000): Promise<string> {
+// Eksekusi model strictly sesuai nama yang diminta tanpa fallback ke model lain
+async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 30000): Promise<{ ok: boolean; content: string }> {
   for (const apiKey of PRIMARY_KEYS) {
     try {
       const controller = new AbortController();
@@ -67,61 +68,51 @@ async function callSingleEngine(messages: any[], modelName: string, timeoutMs = 
 
       const raw = await res.text();
       const parsed = parseUpstreamResponse(raw);
-      if (res.ok && parsed) return parsed;
+      if (res.ok && parsed) {
+        return { ok: true, content: parsed };
+      }
     } catch (_) {}
   }
-  return "";
+  return { ok: false, content: "" };
 }
 
-// Fallback cascade normal
-async function executeAI(messages: any[], requestedModel = "ag/gemini-3.8-flash-high"): Promise<string> {
-  const plan = [requestedModel, "ag/gemini-3.8-flash-medium", "gh/gpt-4o"];
-  for (const target of plan) {
-    const ans = await callSingleEngine(messages, target);
-    if (ans) return ans;
-  }
-  return "Maaf, seluruh cluster AI sedang mengalami antrean. Coba beberapa saat lagi.";
-}
-
-// Combo Epic: 3 Model Paralel + 1 Arbiter Synthesizer
+// Combo Epic: Menggunakan model-model tier tertinggi + cx/gpt-5.6-terra
 async function executeComboEpic(messages: any[]): Promise<{ reply: string; perspectives: Record<string, string> }> {
   const promptUser = messages[messages.length - 1]?.content || "";
 
-  // 1. Eksekusi paralel 3 engine lintas klaster
-  const [claudeAns, geminiAns, gptAns] = await Promise.all([
-    callSingleEngine(messages, "ag/claude-sonnet-4-6", 20000),
-    callSingleEngine(messages, "ag/gemini-3.8-flash-high", 20000),
-    callSingleEngine(messages, "gh/gpt-4o", 20000)
+  // Eksekusi paralel 3 engine independen
+  const [engineA, engineB, engineC] = await Promise.all([
+    callStrictEngine(messages, "ag/claude-sonnet-4-6", 25000),
+    callStrictEngine(messages, "cx/gpt-5.6-terra", 25000),
+    callStrictEngine(messages, "ag/gemini-3.8-flash-high", 25000)
   ]);
 
   const perspectives: Record<string, string> = {
-    "Claude Sonnet 4.6": claudeAns || "(Tidak merespons)",
-    "Gemini 3.8 Flash": geminiAns || "(Tidak merespons)",
-    "GPT-4o": gptAns || "(Tidak merespons)"
+    "Claude Sonnet 4.6": engineA.ok ? engineA.content : "(Model tidak merespons)",
+    "GPT-5.6 Terra": engineB.ok ? engineB.content : "(Model tidak merespons)",
+    "Gemini 3.8 Flash": engineC.ok ? engineC.content : "(Model tidak merespons)"
   };
 
-  // 2. Synthesizer / Juri Konsensus
   const judgePrompt = `Anda adalah Arbiter Konsensus Cerdas X AWD (Mode Combo Epic).
 Pertanyaan Pengguna: "${promptUser}"
 
-Berikut draf respons dari 3 engine AI berbeda:
-[Model Claude]: ${claudeAns || "Tidak tersedia"}
-[Model Gemini]: ${geminiAns || "Tidak tersedia"}
-[Model GPT-4o]: ${gptAns || "Tidak tersedia"}
+Berikut draf respons dari engine:
+[Claude Sonnet 4.6]: ${engineA.content || "Tidak merespons"}
+[GPT-5.6 Terra]: ${engineB.content || "Tidak merespons"}
+[Gemini 3.8 Flash]: ${engineC.content || "Tidak merespons"}
 
 Tugas Anda:
-1. Evaluasi kebenaran, akurasi, dan kedalaman ketiga jawaban di atas.
-2. Buang halusinasi, asumsi keliru, atau inkonsistensi.
-3. Rangkum dan susun satu kesimpulan jawaban terbaik yang sangat terstruktur, jelas, dan kredibel.`;
+1. Evaluasi kebenaran, akurasi, dan kedalaman jawaban di atas.
+2. Rangkum dan susun satu kesimpulan jawaban terbaik yang sangat jelas, terstruktur, dan utuh.`;
 
-  const finalConsensus = await callSingleEngine(
+  const arbiterRes = await callStrictEngine(
     [{ role: "user", content: judgePrompt }],
-    "ag/gemini-3.8-flash-high",
-    25000
+    "ag/claude-sonnet-4-6",
+    30000
   );
 
   return {
-    reply: finalConsensus || claudeAns || geminiAns || gptAns || "Gagal melakukan sintesis konsensus.",
+    reply: arbiterRes.ok ? arbiterRes.content : (engineB.content || engineA.content || engineC.content || "Gagal memperoleh sintesis konsensus."),
     perspectives
   };
 }
@@ -156,7 +147,7 @@ export default {
       try {
         const body: any = await request.json();
         const isCombo = Boolean(body.isCombo);
-        const requestedModel = (body.model || "ag/gemini-3.8-flash-high").trim();
+        const requestedModel = (body.model || "").trim();
         const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0
           ? body.messages
           : [{ role: "user", content: body.prompt || "" }];
@@ -165,13 +156,26 @@ export default {
           const comboResult = await executeComboEpic(incomingMessages);
           return json({
             success: true,
-            model: "Combo Epic (Consensus Trio)",
+            model: "Combo Epic (Trio)",
             reply: comboResult.reply,
             perspectives: comboResult.perspectives
           });
+        }
+
+        if (!requestedModel) {
+          return json({ success: false, error: "Model target tidak ditentukan." }, 400);
+        }
+
+        // Jalankan HANYA model yang dipilih, tanpa fallback ke model lain
+        const result = await callStrictEngine(incomingMessages, requestedModel);
+        if (result.ok) {
+          return json({ success: true, model: requestedModel, reply: result.content });
         } else {
-          const reply = await executeAI(incomingMessages, requestedModel);
-          return json({ success: true, model: requestedModel, reply });
+          return json({
+            success: false,
+            model: requestedModel,
+            error: `Upstream model '${requestedModel}' gagal merespons atau tidak aktif di upstream router.`
+          }, 502);
         }
       } catch (err: any) {
         return json({ success: false, error: err.message }, 400);
@@ -190,18 +194,19 @@ export default {
 
           const task = (async () => {
             if (userText.startsWith("/start")) {
-              await sendTelegramMessage(chatId, "Halo! Bot X AWD siap melayani obrolan cerdas dan mode Combo Epic.");
+              await sendTelegramMessage(chatId, "Halo! Bot X AWD aktif.");
               return;
             }
             if (userText.startsWith("/combo")) {
-              const query = userText.replace("/combo", "").trim() || "Jelaskan konsensus terbaik untuk topik ini.";
+              const query = userText.replace("/combo", "").trim() || "Jelaskan konsensus terbaik.";
               const comboRes = await executeComboEpic([{ role: "user", content: query }]);
-              await sendTelegramMessage(chatId, `⚡ [HASIL KONSENSUS COMBO EPIC]\n\n${comboRes.reply}`);
+              await sendTelegramMessage(chatId, `⚡ [KONSENSUS COMBO EPIC]\n\n${comboRes.reply}`);
               return;
             }
 
-            const res = await executeAI([{ role: "user", content: userText }]);
-            await sendTelegramMessage(chatId, res);
+            // Gunakan default model Claude / Terra murni
+            const res = await callStrictEngine([{ role: "user", content: userText }], "ag/claude-sonnet-4-6");
+            await sendTelegramMessage(chatId, res.ok ? res.content : "Upstream sedang tidak merespons.");
           })();
 
           if (ctx && typeof ctx.waitUntil === "function") {
@@ -215,6 +220,6 @@ export default {
       return json({ ok: true });
     }
 
-    return json({ message: "X AWD Core Engine + Combo Epic Active" });
+    return json({ message: "X AWD Pure Engine Gateway Online" });
   }
 };
