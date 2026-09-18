@@ -96,6 +96,106 @@ export default function App() {
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
 
+      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      const res = await fetch("https://api.xawd.my.id/api/playground/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content }))
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        let errMsg = "Upstream model gagal merespons.";
+        try {
+          errMsg = JSON.parse(errText).error || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data:") && !trimmed.includes("[DONE]")) {
+              try {
+                const parsed = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+                const token = parsed?.choices?.[0]?.delta?.content || "";
+                if (token) {
+                  accumulated += token;
+                  setMessages(prev => {
+                    const next = [...prev];
+                    const lastIdx = next.length - 1;
+                    if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                      next[lastIdx] = { ...next[lastIdx], content: accumulated };
+                    }
+                    return next;
+                  });
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      }
+  }, [messages, isExecuting]);
+
+  // Filter dan Sort Dinamis
+  const filteredModels = useMemo(() => {
+    return models
+      .filter(m => {
+        const matchesSearch =
+          m.name.toLowerCase().includes(search.toLowerCase()) ||
+          m.id.toLowerCase().includes(search.toLowerCase()) ||
+          (m.provider && m.provider.toLowerCase().includes(search.toLowerCase()));
+        const matchesTier = selectedTier === 'ALL' || (m.tier && m.tier.toUpperCase() === selectedTier);
+        return matchesSearch && matchesTier;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'provider') return (a.provider || '').localeCompare(b.provider || '');
+        if (sortBy === 'tier') {
+          const weight: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+          return (weight[b.tier?.toUpperCase()] || 0) - (weight[a.tier?.toUpperCase()] || 0);
+        }
+        return 0;
+      });
+  }, [models, search, selectedTier, sortBy]);
+
+  const handleSend = async (textToSendRaw?: string) => {
+    const textToSend = textToSendRaw || inputPrompt;
+    if (!textToSend.trim() || isExecuting) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: textToSend.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
+    setInputPrompt('');
+    setIsExecuting(true);
+
+    try {
+      const conversationPayload = newHistory
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({ role: m.role, content: m.content }));
+
       const res = await fetch('https://api.xawd.my.id/api/playground/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
