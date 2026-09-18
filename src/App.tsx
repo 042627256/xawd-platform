@@ -10,7 +10,7 @@ interface ModelItem {
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   model?: string;
   timestamp: string;
@@ -30,11 +30,17 @@ export default function App() {
   const [enableFallback, setEnableFallback] = useState(false);
   const [enableRoundRobin, setEnableRoundRobin] = useState(false);
 
+  // Agent Instructions State
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [agentInstructions, setAgentInstructions] = useState<string>(() => {
+    return localStorage.getItem("xawd_agent_instructions") || "";
+  });
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "X AWD siap digunakan. Mode Combo terisolasi tanpa interferensi, kendali Fallback & Round Robin aktif.",
+      content: "X AWD Platform siap digunakan. Input bar telah diperbaiki, kendali System Instructions Agent aktif dan tersimpan.",
       model: "X AWD Core",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
@@ -46,6 +52,7 @@ export default function App() {
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const agentFileRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,6 +85,22 @@ export default function App() {
       tier: "HIGH"
     };
   }, [models, selectedModel]);
+
+  const handleSaveInstructions = () => {
+    localStorage.setItem("xawd_agent_instructions", agentInstructions);
+    setIsAgentModalOpen(false);
+  };
+
+  const handleLoadAgentFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAgentInstructions(reader.result as string);
+      localStorage.setItem("xawd_agent_instructions", reader.result as string);
+    };
+    reader.readAsText(file);
+  };
 
   const handlePasteClipboard = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
@@ -115,7 +138,17 @@ export default function App() {
     setIsExecuting(true);
 
     try {
-      const payloadMessages = messages.map(m => ({ role: m.role, content: m.content }));
+      const payloadMessages: any[] = [];
+      
+      // Sisipkan System Instruction jika tersedia
+      if (agentInstructions.trim()) {
+        payloadMessages.push({ role: "system", content: agentInstructions.trim() });
+      }
+
+      messages.forEach(m => {
+        payloadMessages.push({ role: m.role, content: m.content });
+      });
+
       let newMsgContent: any = userText;
       if (currentImg) {
         newMsgContent = [
@@ -190,6 +223,30 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <style>{`
+        :root { --bg-dark: #0d1117; --surface-dark: #161b22; --border-dark: #30363d; }
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+        .app-shell { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 900px; margin: 0 auto; background: var(--surface-dark); border-left: 1px solid var(--border-dark); border-right: 1px solid var(--border-dark); position: relative; }
+        
+        .app-header { background: #161b22; border-bottom: 1px solid var(--border-dark); padding: 10px 14px; flex-shrink: 0; }
+        .app-toolbar { background: #0d1117; border-bottom: 1px solid var(--border-dark); padding: 8px 14px; font-size: 12px; flex-shrink: 0; }
+        .app-chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+        
+        /* Area Footer Input Luas & Anti Gepeng */
+        .app-footer { background: #161b22; border-top: 1px solid var(--border-dark); padding: 12px 14px; flex-shrink: 0; z-index: 10; }
+        .input-row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+        .chat-textarea { flex: 1; width: 100%; min-height: 58px; max-height: 160px; background: #0d1117 !important; color: #fff !important; border: 1px solid var(--border-dark) !important; border-radius: 18px !important; padding: 12px 16px !important; font-size: 15px !important; line-height: 1.4 !important; outline: none !important; resize: none; }
+        .chat-textarea:focus { border-color: #58a6ff !important; box-shadow: 0 0 0 1px #58a6ff !important; }
+        .action-circle-btn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border-dark); background: #21262d; color: #c9d1d9; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; cursor: pointer; }
+        .send-circle-btn { width: 46px; height: 46px; border-radius: 50%; border: none; background: #1f6feb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; cursor: pointer; }
+        .send-circle-btn:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+
+        .chat-bubble { max-width: 86%; padding: 12px 16px; border-radius: 16px; line-height: 1.55; font-size: 14.5px; word-break: break-word; }
+        .bubble-user { background: #1f6feb; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bubble-ai { background: #21262d; color: #f0f6fc; align-self: flex-start; border: 1px solid var(--border-dark); border-bottom-left-radius: 2px; }
+      `}</style>
+
       {/* Header Bar */}
       <div className="app-header d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-2">
@@ -204,12 +261,21 @@ export default function App() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
+          {/* Tombol Agent Instructions */}
+          <button
+            type="button"
+            onClick={() => setIsAgentModalOpen(true)}
+            className={`btn btn-sm rounded-pill px-3 fw-semibold ${agentInstructions ? 'btn-outline-info' : 'btn-outline-secondary'}`}
+          >
+            <i className="bi bi-robot me-1"></i> Agent {agentInstructions ? '✓' : ''}
+          </button>
+
           {!isComboActive && (
             <button
               type="button"
               onClick={() => setIsDropdownOpen(true)}
               className="btn btn-sm btn-dark border border-secondary text-truncate rounded-pill px-3"
-              style={{ maxWidth: '170px' }}
+              style={{ maxWidth: '140px' }}
             >
               {activeModel.name}
             </button>
@@ -275,6 +341,13 @@ export default function App() {
 
       {/* Chat Messages */}
       <div className="app-chat-body">
+        {agentInstructions && (
+          <div className="p-2 rounded bg-dark border border-info border-opacity-25 small text-info d-flex justify-content-between align-items-center">
+            <span><i className="bi bi-info-circle me-1"></i> System Instructions Agen Aktif</span>
+            <button onClick={() => setIsAgentModalOpen(true)} className="btn btn-sm btn-link text-info p-0 text-decoration-none">Edit</button>
+          </div>
+        )}
+
         {messages.map(msg => (
           <div key={msg.id} className={`chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
             <div className="d-flex justify-content-between small opacity-75 mb-1 gap-3">
@@ -309,21 +382,20 @@ export default function App() {
       {attachedImage && (
         <div className="px-3 py-2 bg-dark border-top d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            <img src={attachedImage} alt="Attachment" className="rounded border border-success" style={{ width: '36px', height: '36px', objectFit: 'cover' }} />
+            <img src={attachedImage} alt="Attachment" className="rounded border border-success" style={{ width: '40px', height: '40px', objectFit: 'cover' }} />
             <span className="small text-success fw-bold">Screenshot siap dikirim</span>
           </div>
           <button type="button" onClick={() => setAttachedImage(null)} className="btn btn-sm btn-link text-danger text-decoration-none">Batal</button>
         </div>
       )}
 
-      {/* Footer Input */}
+      {/* Footer Input Luas & Responsif */}
       <div className="app-footer">
-        <div className="d-flex align-items-end gap-2">
+        <div className="input-row">
           <button
             type="button"
             onClick={() => setIsAttachOpen(true)}
-            className="btn btn-dark border border-secondary rounded-circle d-flex align-items-center justify-content-center"
-            style={{ width: '44px', height: '44px', flexShrink: 0 }}
+            className="action-circle-btn"
           >
             <i className={`bi ${attachedImage ? 'bi-check2 text-success' : 'bi-plus-lg'}`}></i>
           </button>
@@ -362,20 +434,78 @@ export default function App() {
             type="button"
             disabled={isExecuting || (!inputPrompt.trim() && !attachedImage)}
             onClick={handleSend}
-            className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-            style={{ width: '44px', height: '44px', flexShrink: 0 }}
+            className="send-circle-btn"
           >
             <i className="bi bi-send-fill"></i>
           </button>
         </div>
       </div>
 
+      {/* Modal Agent System Instructions */}
+      {isAgentModalOpen && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1100 }}>
+          <div className="bg-dark p-3 rounded-4 w-100 border border-secondary" style={{ maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="fw-bold fs-6 text-light"><i className="bi bi-sliders me-2 text-primary"></i>Instruksi Agen (System Prompt)</span>
+              <button type="button" className="btn-close btn-close-white" onClick={() => setIsAgentModalOpen(false)}></button>
+            </div>
+            
+            <p className="small text-secondary mb-2">
+              Instruksi ini akan disuntikkan permanen ke model pada setiap prompt. Anda dapat mengunggah file <code>AGENTS.md</code> atau <code>.txt</code>.
+            </p>
+
+            <input
+              type="file"
+              ref={agentFileRef}
+              onChange={handleLoadAgentFile}
+              accept=".txt,.md"
+              style={{ display: 'none' }}
+            />
+
+            <div className="d-flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => agentFileRef.current?.click()}
+                className="btn btn-sm btn-outline-info rounded-pill"
+              >
+                <i className="bi bi-file-earmark-arrow-up me-1"></i> Load File (.txt / .md)
+              </button>
+              {agentInstructions && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAgentInstructions("");
+                    localStorage.removeItem("xawd_agent_instructions");
+                  }}
+                  className="btn btn-sm btn-outline-danger rounded-pill"
+                >
+                  Reset / Kosongkan
+                </button>
+              )}
+            </div>
+
+            <textarea
+              className="form-control bg-black text-white border-secondary mb-3 flex-grow-1"
+              style={{ minHeight: '180px', fontFamily: 'monospace', fontSize: '13px' }}
+              placeholder="Tulis sistem persona atau instruksi agen di sini... (contoh: 'Anda adalah software engineer senior, selalu gunakan kode teroptimasi...')"
+              value={agentInstructions}
+              onChange={e => setAgentInstructions(e.target.value)}
+            />
+
+            <div className="d-flex justify-content-end gap-2">
+              <button type="button" onClick={() => setIsAgentModalOpen(false)} className="btn btn-sm btn-secondary rounded-pill px-3">Tutup</button>
+              <button type="button" onClick={handleSaveInstructions} className="btn btn-sm btn-primary rounded-pill px-4">Simpan Instruksi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Action Sheet */}
       {isAttachOpen && (
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-end justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050 }} onClick={() => setIsAttachOpen(false)}>
           <div className="bg-dark p-3 rounded-top-4 w-100 border-top border-secondary" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="fw-bold">Pilih Aksi / Fitur</span>
+              <span className="fw-bold">Pilih Aksi / Lampiran</span>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsAttachOpen(false)}></button>
             </div>
             <div className="row g-2 text-center mb-3">
