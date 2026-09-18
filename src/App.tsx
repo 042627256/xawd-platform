@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import staticModelList from './data/models.json';
 
 interface ModelItem {
@@ -24,15 +24,20 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>(
     staticModelList.length > 0 ? (staticModelList[0] as any).id : 'ag/gemini-3.8-flash-high'
   );
+  
+  // State Modal Model, Pencarian, Filter & Sort
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedTier, setSelectedTier] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<'name' | 'tier' | 'provider'>('name');
   const [isComboActive, setIsComboActive] = useState(false);
-  
+
+  // State Chat & Action Sheet
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Halo! Saya asisten cerdas X AWD. Aktifkan fitur "⚡ Combo Epic" jika ingin jawaban tingkat tinggi hasil konsensus 3 engine AI sekaligus.',
+      content: 'Halo! Saya asisten cerdas X AWD. Anda dapat memilih model per tier, menggunakan filter, atau mengaktifkan mode ⚡ Combo Epic.',
       model: 'X AWD',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
@@ -47,6 +52,28 @@ export default function App() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isExecuting]);
+
+  // Filter dan Sort Dinamis
+  const filteredModels = useMemo(() => {
+    return models
+      .filter(m => {
+        const matchesSearch =
+          m.name.toLowerCase().includes(search.toLowerCase()) ||
+          m.id.toLowerCase().includes(search.toLowerCase()) ||
+          (m.provider && m.provider.toLowerCase().includes(search.toLowerCase()));
+        const matchesTier = selectedTier === 'ALL' || (m.tier && m.tier.toUpperCase() === selectedTier);
+        return matchesSearch && matchesTier;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'provider') return (a.provider || '').localeCompare(b.provider || '');
+        if (sortBy === 'tier') {
+          const weight: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+          return (weight[b.tier?.toUpperCase()] || 0) - (weight[a.tier?.toUpperCase()] || 0);
+        }
+        return 0;
+      });
+  }, [models, search, selectedTier, sortBy]);
 
   const handleSend = async (textToSendRaw?: string) => {
     const textToSend = textToSendRaw || inputPrompt;
@@ -147,6 +174,8 @@ export default function App() {
         @media (max-width: 768px) {
           .xawd-app-shell { max-width: 100%; border: none; grid-template-rows: 54px 1fr auto; }
         }
+
+        /* 1. HEADER */
         .header-fixed-row {
           grid-row: 1; display: flex; align-items: center; justify-content: space-between;
           padding: 0 16px; background: rgba(30, 31, 32, 0.98); backdrop-filter: blur(16px);
@@ -155,12 +184,12 @@ export default function App() {
         .header-left { display: flex; align-items: center; gap: 8px; }
         .brand-badge {
           background: #1a73e8; color: #fff; font-weight: 700; border-radius: 8px;
-          padding: 4px 10px; font-size: 13px; letter-spacing: 0.5px;
+          padding: 5px 11px; font-size: 13px; letter-spacing: 0.5px;
         }
         .combo-btn {
           background: #2b2615; color: #ffd700; border: 1px solid #7c6818;
           border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 700;
-          cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+          cursor: pointer; display: flex; align-items: center; gap: 6px;
         }
         .combo-btn.active {
           background: #ffd700; color: #000; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
@@ -168,12 +197,14 @@ export default function App() {
         .model-btn {
           background: #282a2c; border: 1px solid #3c4043; color: #e3e3e3;
           border-radius: 20px; padding: 5px 12px; font-size: 12.5px; cursor: pointer;
-          max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .new-btn {
           background: transparent; border: 1px solid #3c4043; color: #8ab4f8;
           padding: 5px 10px; border-radius: 16px; font-size: 11.5px; cursor: pointer;
         }
+
+        /* 2. CHAT SCROLL BODY */
         .chat-scroll-row {
           grid-row: 2; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;
           gap: 14px; scroll-behavior: smooth;
@@ -198,6 +229,7 @@ export default function App() {
         .perspective-card { padding: 6px 10px; background: #232427; border-radius: 6px; }
         .perspective-title { font-weight: 700; color: #8ab4f8; margin-bottom: 2px; }
 
+        /* 3. FOOTER INPUT */
         .footer-fixed-row {
           grid-row: 3; display: flex; align-items: center;
           padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
@@ -215,18 +247,34 @@ export default function App() {
           padding: 10px 16px; color: #fff; font-size: 14.5px; outline: none; resize: none;
         }
 
-        /* Modal Dialog Pemilih Model */
+        /* MODAL SELECTOR & FILTER ENGINE */
         .dropdown-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; }
         .dropdown-box {
-          position: fixed; top: 64px; left: 16px; right: 16px; max-width: 500px;
+          position: fixed; top: 60px; left: 16px; right: 16px; max-width: 520px;
           margin: 0 auto; background: #232427; border: 1px solid #3c4043;
-          border-radius: 16px; padding: 14px; z-index: 210;
+          border-radius: 16px; padding: 14px; z-index: 210; box-shadow: 0 12px 32px rgba(0,0,0,0.7);
         }
         .search-in {
           width: 100%; padding: 10px 14px; background: #131314; border: 1px solid #3c4043;
           border-radius: 10px; color: #fff; margin-bottom: 10px; outline: none;
         }
-        .model-items { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+        .filter-controls-row {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-bottom: 10px; gap: 8px; flex-wrap: wrap;
+        }
+        .tier-pills { display: flex; gap: 6px; }
+        .pill-btn {
+          background: #18191b; border: 1px solid #3c4043; color: #9aa0a6;
+          border-radius: 12px; padding: 4px 9px; font-size: 11px; cursor: pointer; font-weight: 600;
+        }
+        .pill-btn.active {
+          background: #1a73e8; color: #fff; border-color: #1a73e8;
+        }
+        .sort-select {
+          background: #18191b; border: 1px solid #3c4043; color: #e3e3e3;
+          border-radius: 10px; padding: 4px 8px; font-size: 11px; outline: none;
+        }
+        .model-items { max-height: 48vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
         .m-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
         .m-row:hover, .m-row.selected { background: #333538; }
         .m-name { font-size: 13.5px; font-weight: 500; }
@@ -236,7 +284,7 @@ export default function App() {
         .t-badge.medium { background: #4a3b1a; color: #fdd663; }
         .t-badge.low { background: #1e3a29; color: #81c995; }
 
-        /* Action Sheet */
+        /* ACTION SHEET */
         .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
         .sheet-body {
           width: 100%; max-width: 600px; background: #1e1f20; border-top-left-radius: 24px;
@@ -349,23 +397,53 @@ export default function App() {
         </footer>
       </div>
 
-      {/* Modal Dropdown */}
+      {/* Modal Dialog Pemilih Model dengan Sort & Filter Tier */}
       {isDropdownOpen && (
         <>
           <div className="dropdown-overlay" onClick={() => setIsDropdownOpen(false)} />
           <div className="dropdown-box">
             <input
               type="text"
-              placeholder="Cari engine..."
+              placeholder="Cari engine (Gemini, Claude, GPT, GLM)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="search-in"
               autoFocus
             />
+
+            {/* Bilah Kontrol Filter Tier & Pengurutan */}
+            <div className="filter-controls-row">
+              <div className="tier-pills">
+                {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map(tier => (
+                  <button
+                    key={tier}
+                    onClick={() => setSelectedTier(tier)}
+                    className={`pill-btn ${selectedTier === tier ? 'active' : ''}`}
+                  >
+                    {tier}
+                  </button>
+                ))}
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={(e: any) => setSortBy(e.target.value)}
+                className="sort-select"
+              >
+                <option value="name">Urut: Nama (A-Z)</option>
+                <option value="tier">Urut: Tier (Tinggi-Rendah)</option>
+                <option value="provider">Urut: Provider</option>
+              </select>
+            </div>
+
+            {/* List Model Terfilter */}
             <div className="model-items">
-              {models
-                .filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.id.toLowerCase().includes(search.toLowerCase()))
-                .map(m => (
+              {filteredModels.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#9aa0a6', fontSize: '13px' }}>
+                  Tidak ada model yang cocok dengan kriteria filter.
+                </div>
+              ) : (
+                filteredModels.map(m => (
                   <div
                     key={m.id}
                     onClick={() => {
@@ -378,15 +456,18 @@ export default function App() {
                       <div className="m-name">{m.name}</div>
                       <div className="m-id">{m.id}</div>
                     </div>
-                    <span className={`t-badge ${m.tier}`}>{m.tier}</span>
+                    <span className={`t-badge ${(m.tier || 'low').toLowerCase()}`}>
+                      {m.tier || 'LOW'}
+                    </span>
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </div>
         </>
       )}
 
-      {/* Action Sheet */}
+      {/* Sheet Action Lampiran */}
       {isAttachOpen && (
         <div className="sheet-backdrop" onClick={() => setIsAttachOpen(false)}>
           <div className="sheet-body" onClick={e => e.stopPropagation()}>
@@ -402,6 +483,23 @@ export default function App() {
                   <span>{item.icon}</span>
                   <span>{item.name}</span>
                 </button>
+              ))}
+            </div>
+            <div className="feat-list">
+              {[
+                { name: 'Gambar', sub: 'Buat dan edit gambar', icon: '🎨' },
+                { name: 'Video', sub: 'Wujudkan ide kreatif', icon: '🎬' },
+                { name: 'Musik', sub: 'Buat trek audio sintetis', icon: '🎵' },
+                { name: 'Canvas', sub: 'Buat kode, tulis, atau slide', icon: '📋' },
+                { name: 'Deep Research', sub: 'Dapatkan laporan mendalam', icon: '🔍' }
+              ].map(feat => (
+                <div key={feat.name} onClick={() => handleFeaturePick(feat.name)} className="feat-item">
+                  <span style={{ fontSize: '20px' }}>{feat.icon}</span>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{feat.name}</div>
+                    <div style={{ fontSize: '12px', color: '#9aa0a6' }}>{feat.sub}</div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
