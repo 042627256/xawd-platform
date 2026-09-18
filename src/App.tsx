@@ -414,7 +414,7 @@ export default function App() {
             {/* Bilah Kontrol Filter Tier & Pengurutan */}
             <div className="filter-controls-row">
               <div className="tier-pills">
-                {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map(tier => (
+                {['ALL', 'ULTRA', 'HIGH', 'MEDIUM', 'LOW'].map(tier => (
                   <button
                     key={tier}
                     onClick={() => setSelectedTier(tier)}
