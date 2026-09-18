@@ -5,7 +5,6 @@ interface ModelItem {
   id: string;
   name: string;
   provider: string;
-  task?: string;
   tier: string;
 }
 
@@ -35,11 +34,12 @@ export default function App() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Selamat datang di X AWD v2. Antarmuka telah diperbarui dengan Bootstrap 5 Dark Design, isolasi model Combo independen, dan dukungan penempelan gambar screenshot langsung.",
-      model: "X AWD Enterprise",
+      content: "X AWD siap digunakan. Mode Combo terisolasi tanpa interferensi, kendali Fallback & Round Robin aktif.",
+      model: "X AWD Core",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
   ]);
+
   const [inputPrompt, setInputPrompt] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
   const [isAttachOpen, setIsAttachOpen] = useState(false);
@@ -166,7 +166,7 @@ export default function App() {
           {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: `Gagal: ${data.error || "Terjadi kesalahan gateway"}`,
+            content: `Gagal: ${data.error || "Terjadi kendala pada gateway upstream"}`,
             model: "Error",
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           }
@@ -189,63 +189,66 @@ export default function App() {
   };
 
   return (
-    <div className="container-fluid p-0 d-flex flex-column vh-100 justify-content-between" style={{ maxWidth: '960px' }}>
-      
-      {/* Bootstrap 5 Navbar Header */}
-      <nav className="navbar navbar-expand glass-card border-0 border-bottom px-3 py-2">
-        <div className="container-fluid p-0 d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary px-2 py-2 fs-6 rounded-3 shadow-sm">X AWD</span>
-            <button
-              onClick={() => setIsComboActive(!isComboActive)}
-              className={`btn btn-sm rounded-pill fw-bold px-3 ${isComboActive ? 'btn-warning shadow' : 'btn-outline-warning'}`}
-            >
-              <i className="bi bi-lightning-charge-fill me-1"></i>
-              {isComboActive ? 'Combo ON' : 'Combo Epic'}
-            </button>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            {!isComboActive && (
-              <button onClick={() => setIsDropdownOpen(true)} className="btn btn-sm btn-dark border rounded-pill px-3 text-truncate" style={{ maxWidth: '170px' }}>
-                <i className="bi bi-cpu me-1 text-primary"></i>
-                {activeModel.name}
-              </button>
-            )}
-            <button onClick={() => setMessages([messages[0]])} className="btn btn-sm btn-outline-secondary rounded-pill">
-              <i className="bi bi-plus-lg"></i> Baru
-            </button>
-          </div>
+    <div className="app-shell">
+      {/* Header Bar */}
+      <div className="app-header d-flex align-items-center justify-content-between">
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-primary px-2 py-2 fs-6">X AWD</span>
+          <button
+            type="button"
+            onClick={() => setIsComboActive(!isComboActive)}
+            className={`btn btn-sm fw-bold rounded-pill px-3 ${isComboActive ? 'btn-warning text-dark' : 'btn-outline-warning'}`}
+          >
+            ⚡ {isComboActive ? 'Combo ON' : 'Combo Epic'}
+          </button>
         </div>
-      </nav>
 
-      {/* Toolbar Kontrol Bootstrap Switches */}
-      <div className="d-flex align-items-center justify-content-between px-3 py-2 glass-card border-0 border-bottom flex-wrap gap-2">
+        <div className="d-flex align-items-center gap-2">
+          {!isComboActive && (
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(true)}
+              className="btn btn-sm btn-dark border border-secondary text-truncate rounded-pill px-3"
+              style={{ maxWidth: '170px' }}
+            >
+              {activeModel.name}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMessages([messages[0]])}
+            className="btn btn-sm btn-outline-secondary rounded-pill"
+          >
+            + Baru
+          </button>
+        </div>
+      </div>
+
+      {/* Toolbar Kontrol */}
+      <div className="app-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div className="d-flex align-items-center gap-3">
-          <div className="form-check form-switch mb-0">
+          <div className="form-check form-switch m-0">
             <input
               className="form-check-input"
               type="checkbox"
-              role="switch"
-              id="fallbackSwitch"
+              id="fbCheck"
               checked={enableFallback}
               onChange={e => setEnableFallback(e.target.checked)}
             />
-            <label className={`form-check-label small fw-semibold ${enableFallback ? 'text-success' : 'text-secondary'}`} htmlFor="fallbackSwitch">
-              Smart Fallback
+            <label className={`form-check-label ${enableFallback ? 'text-success fw-bold' : 'text-secondary'}`} htmlFor="fbCheck">
+              Fallback
             </label>
           </div>
 
-          <div className="form-check form-switch mb-0">
+          <div className="form-check form-switch m-0">
             <input
               className="form-check-input"
               type="checkbox"
-              role="switch"
-              id="rrSwitch"
+              id="rrCheck"
               checked={enableRoundRobin}
               onChange={e => setEnableRoundRobin(e.target.checked)}
             />
-            <label className={`form-check-label small fw-semibold ${enableRoundRobin ? 'text-info' : 'text-secondary'}`} htmlFor="rrSwitch">
+            <label className={`form-check-label ${enableRoundRobin ? 'text-info fw-bold' : 'text-secondary'}`} htmlFor="rrCheck">
               Round Robin
             </label>
           </div>
@@ -253,9 +256,9 @@ export default function App() {
 
         {isComboActive && (
           <div className="d-flex align-items-center gap-2">
-            <span className="badge text-bg-warning">Preset:</span>
+            <span className="text-warning fw-bold">Preset:</span>
             <select
-              className="form-select form-select-sm bg-dark text-warning border-warning rounded-3"
+              className="form-select form-select-sm bg-dark text-warning border-secondary"
               value={comboPreset}
               onChange={e => setComboPreset(e.target.value)}
               style={{ width: 'auto' }}
@@ -270,77 +273,61 @@ export default function App() {
         )}
       </div>
 
-      {/* Chat Messages Body */}
-      <div className="chat-box p-3 flex-grow-1">
+      {/* Chat Messages */}
+      <div className="app-chat-body">
         {messages.map(msg => (
-          <div key={msg.id} className={`d-flex mb-3 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
-            <div className={`p-3 shadow-sm ${msg.role === 'user' ? 'bubble-user' : 'bubble-ai'}`} style={{ maxWidth: '85%' }}>
-              <div className="d-flex justify-content-between small opacity-75 mb-1 gap-3">
-                <span className="fw-bold">{msg.role === 'user' ? 'Anda' : (msg.model || 'X AWD')}</span>
-                <span>{msg.timestamp}</span>
-              </div>
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{msg.content}</div>
-
-              {/* Accordion Perspektif 3 Engine */}
-              {msg.perspectives && Object.keys(msg.perspectives).length > 0 && (
-                <div className="mt-3">
-                  <button
-                    className="btn btn-sm btn-outline-warning w-100 text-start rounded-3"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target={`#persp-${msg.id}`}
-                  >
-                    <i className="bi bi-diagram-3-fill me-1"></i> Rincian 3 Perspektif Engine
-                  </button>
-                  <div className="collapse mt-2" id={`persp-${msg.id}`}>
-                    <div className="card card-body bg-black border-secondary p-2">
-                      {Object.entries(msg.perspectives).map(([eng, text]) => (
-                        <div key={eng} className="mb-2 p-2 rounded bg-dark border border-secondary-subtle">
-                          <div className="fw-bold text-info small mb-1">{eng}</div>
-                          <div className="small text-light">{text}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+          <div key={msg.id} className={`chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
+            <div className="d-flex justify-content-between small opacity-75 mb-1 gap-3">
+              <span className="fw-bold">{msg.role === 'user' ? 'Anda' : (msg.model || 'X AWD')}</span>
+              <span>{msg.timestamp}</span>
             </div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+
+            {msg.perspectives && Object.keys(msg.perspectives).length > 0 && (
+              <div className="mt-2 pt-2 border-top border-secondary">
+                <div className="small fw-bold text-warning mb-2">Perspektif 3 Engine:</div>
+                {Object.entries(msg.perspectives).map(([eng, text]) => (
+                  <div key={eng} className="mb-2 p-2 rounded bg-black border border-secondary small">
+                    <div className="text-info fw-semibold">{eng}</div>
+                    <div className="text-secondary">{text}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {isExecuting && (
-          <div className="d-flex mb-3 justify-content-start">
-            <div className="p-3 bubble-ai shadow-sm text-secondary small">
-              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-              X AWD sedang merumuskan respons...
-            </div>
+          <div className="chat-bubble bubble-ai text-secondary small">
+            <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+            X AWD sedang memproses respons...
           </div>
         )}
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Screenshot Paste Preview */}
+      {/* Preview Gambar Paste */}
       {attachedImage && (
         <div className="px-3 py-2 bg-dark border-top d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
-            <img src={attachedImage} alt="Attachment" className="rounded border border-success" style={{ width: '40px', height: '40px', objectFit: 'cover' }} />
+            <img src={attachedImage} alt="Attachment" className="rounded border border-success" style={{ width: '36px', height: '36px', objectFit: 'cover' }} />
             <span className="small text-success fw-bold">Screenshot siap dikirim</span>
           </div>
-          <button onClick={() => setAttachedImage(null)} className="btn btn-sm btn-link text-danger text-decoration-none">Batal</button>
+          <button type="button" onClick={() => setAttachedImage(null)} className="btn btn-sm btn-link text-danger text-decoration-none">Batal</button>
         </div>
       )}
 
-      {/* Footer Input Bar */}
-      <div className="p-3 glass-card border-0 border-top">
-        <div className="input-group">
+      {/* Footer Input */}
+      <div className="app-footer">
+        <div className="d-flex align-items-end gap-2">
           <button
-            onClick={() => setIsAttachOpen(true)}
-            className="btn btn-outline-secondary rounded-circle me-2 d-flex align-items-center justify-content-center"
-            style={{ width: '48px', height: '48px' }}
             type="button"
+            onClick={() => setIsAttachOpen(true)}
+            className="btn btn-dark border border-secondary rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: '44px', height: '44px', flexShrink: 0 }}
           >
-            <i className={`bi ${attachedImage ? 'bi-check2 text-success fs-5' : 'bi-plus-lg fs-5'}`}></i>
+            <i className={`bi ${attachedImage ? 'bi-check2 text-success' : 'bi-plus-lg'}`}></i>
           </button>
-          
+
           <input
             type="file"
             ref={fileInputRef}
@@ -357,9 +344,9 @@ export default function App() {
           />
 
           <textarea
-            className="form-control rounded-4 bg-dark text-light border-secondary px-3 py-2"
+            className="form-control chat-textarea"
             rows={2}
-            placeholder={isComboActive ? "Ketik prompt untuk konsensus Combo..." : "Ketik pesan untuk X AWD..."}
+            placeholder={isComboActive ? "Ketik prompt konsensus Combo..." : "Ketik pesan untuk X AWD..."}
             value={inputPrompt}
             onChange={e => setInputPrompt(e.target.value)}
             onPaste={handlePasteClipboard}
@@ -372,131 +359,101 @@ export default function App() {
           />
 
           <button
+            type="button"
             disabled={isExecuting || (!inputPrompt.trim() && !attachedImage)}
             onClick={handleSend}
-            className="btn btn-primary rounded-circle ms-2 d-flex align-items-center justify-content-center"
-            style={{ width: '48px', height: '48px' }}
-            type="button"
+            className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: '44px', height: '44px', flexShrink: 0 }}
           >
-            <i className="bi bi-send-fill fs-6"></i>
+            <i className="bi bi-send-fill"></i>
           </button>
         </div>
       </div>
 
-      {/* Action Sheet Modal Multimodal */}
+      {/* Modal Action Sheet */}
       {isAttachOpen && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setIsAttachOpen(false)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content glass-card text-light rounded-4">
-              <div className="modal-header border-0 pb-0">
-                <h6 className="modal-title fw-bold">Pilih Aksi & Lampiran</h6>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setIsAttachOpen(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="row g-2 text-center mb-3">
-                  {[
-                    { name: "Kamera", icon: "bi-camera" },
-                    { name: "Gambar", icon: "bi-image" },
-                    { name: "Files", icon: "bi-folder2-open" },
-                    { name: "Drive", icon: "bi-cloud-arrow-up" }
-                  ].map(item => (
-                    <div key={item.name} className="col-3">
-                      <button
-                        onClick={() => {
-                          setIsAttachOpen(false);
-                          fileInputRef.current?.click();
-                        }}
-                        className="btn btn-dark border border-secondary rounded-4 w-100 py-3 d-flex flex-column align-items-center gap-1"
-                      >
-                        <i className={`bi ${item.icon} fs-4 text-primary`}></i>
-                        <span className="small">{item.name}</span>
-                      </button>
-                    </div>
-                  ))}
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-end justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050 }} onClick={() => setIsAttachOpen(false)}>
+          <div className="bg-dark p-3 rounded-top-4 w-100 border-top border-secondary" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span className="fw-bold">Pilih Aksi / Fitur</span>
+              <button type="button" className="btn-close btn-close-white" onClick={() => setIsAttachOpen(false)}></button>
+            </div>
+            <div className="row g-2 text-center mb-3">
+              {[
+                { name: "Kamera", icon: "bi-camera" },
+                { name: "Gambar", icon: "bi-image" },
+                { name: "Files", icon: "bi-folder2-open" },
+                { name: "Drive", icon: "bi-cloud-arrow-up" }
+              ].map(item => (
+                <div key={item.name} className="col-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAttachOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="btn btn-dark border border-secondary w-100 py-3 rounded-3"
+                  >
+                    <i className={`bi ${item.icon} fs-5 text-primary`}></i>
+                    <div className="small mt-1">{item.name}</div>
+                  </button>
                 </div>
-
-                <div className="list-group list-group-flush rounded-3">
-                  {[
-                    { name: "Chat", desc: "Mode dialog terstruktur", icon: "bi-chat-dots" },
-                    { name: "Voices", desc: "Sintesis audio & suara", icon: "bi-mic" },
-                    { name: "Video", desc: "Analisis frame visual", icon: "bi-camera-video" },
-                    { name: "Canvas", desc: "Editor dokumen & kode", icon: "bi-brush" }
-                  ].map(f => (
-                    <button
-                      key={f.name}
-                      onClick={() => {
-                        setIsAttachOpen(false);
-                        setInputPrompt(prev => `[${f.name}] ${prev}`);
-                      }}
-                      className="list-group-item list-group-item-action bg-transparent text-light border-secondary d-flex align-items-center gap-3 py-2"
-                    >
-                      <i className={`bi ${f.icon} fs-5 text-warning`}></i>
-                      <div className="text-start">
-                        <div className="fw-bold small">{f.name}</div>
-                        <div className="text-secondary small" style={{ fontSize: '11px' }}>{f.desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Model Picker Modal */}
+      {/* Modal Model Picker */}
       {isDropdownOpen && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setIsDropdownOpen(false)}>
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
-            <div className="modal-content glass-card text-light rounded-4">
-              <div className="modal-header border-secondary">
-                <h6 className="modal-title fw-bold">Pilih Model (118 Model)</h6>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setIsDropdownOpen(false)}></button>
-              </div>
-              <div className="modal-body p-3">
-                <input
-                  type="text"
-                  placeholder="Cari nama atau ID model..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="form-control bg-dark text-light border-secondary mb-3 rounded-3"
-                  autoFocus
-                />
-                <div className="d-flex gap-1 flex-wrap mb-3">
-                  {['ALL', 'ULTRA', 'HIGH', 'MEDIUM', 'LOW', 'FREE'].map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setSelectedTier(t)}
-                      className={`btn btn-sm rounded-pill ${selectedTier === t ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050 }} onClick={() => setIsDropdownOpen(false)}>
+          <div className="bg-dark p-3 rounded-4 w-100 border border-secondary" style={{ maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="fw-bold">Pilih Model</span>
+              <button type="button" className="btn-close btn-close-white" onClick={() => setIsDropdownOpen(false)}></button>
+            </div>
+            <input
+              type="text"
+              placeholder="Cari model..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="form-control bg-black text-white border-secondary mb-2"
+              autoFocus
+            />
+            <div className="d-flex gap-1 flex-wrap mb-2">
+              {['ALL', 'ULTRA', 'HIGH', 'MEDIUM', 'LOW', 'FREE'].map(t => (
+                <button
+                  type="button"
+                  key={t}
+                  onClick={() => setSelectedTier(t)}
+                  className={`btn btn-sm ${selectedTier === t ? 'btn-primary' : 'btn-outline-secondary'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="overflow-auto flex-grow-1">
+              {filteredModels.map(m => (
+                <div
+                  key={m.id}
+                  onClick={() => {
+                    setSelectedModel(m.id);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`p-2 rounded d-flex justify-content-between align-items-center mb-1 cursor-pointer ${selectedModel === m.id ? 'bg-primary text-white' : 'bg-transparent text-light border border-secondary'}`}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div>
+                    <div className="small fw-semibold">{m.name}</div>
+                    <div className="text-secondary" style={{ fontSize: '10px' }}>{m.id}</div>
+                  </div>
+                  <span className="badge bg-secondary">{m.tier}</span>
                 </div>
-                <div className="list-group list-group-flush">
-                  {filteredModels.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        setSelectedModel(m.id);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`list-group-item list-group-item-action bg-transparent text-light border-secondary-subtle d-flex justify-content-between align-items-center py-2 ${selectedModel === m.id ? 'active' : ''}`}
-                    >
-                      <div>
-                        <div className="fw-semibold small">{m.name}</div>
-                        <div className="text-secondary small" style={{ fontSize: '11px' }}>{m.id}</div>
-                      </div>
-                      <span className="badge text-bg-secondary">{m.tier}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
