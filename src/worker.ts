@@ -88,10 +88,12 @@ function parseStreamOrJson(rawText: string): string {
   return combined.trim();
 }
 
-async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 45000): Promise<{ ok: boolean; content: string }> {
+async function callStrictEngine(messages: any[], modelName: string, timeoutMs = 50000): Promise<{ ok: boolean; content: string }> {
   try {
+    const lower = modelName.toLowerCase();
+    const effectiveTimeout = (lower.includes("dawn") || lower.includes("astra") || lower.includes("opus")) ? 90000 : timeoutMs;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
     const res = await fetch(`${TARGET_BASE}/chat/completions`, {
       method: "POST",
