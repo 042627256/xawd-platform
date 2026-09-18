@@ -70,6 +70,7 @@ export default {
       });
     }
 
+    // Ambil daftar model live
     if (url.pathname === "/api/models" && request.method === "GET") {
       try {
         const upstreamRes = await fetch(`${TARGET_BASE}/models`, {
@@ -79,30 +80,22 @@ export default {
         const rawList = data.data || data || [];
         const modelIds = rawList.map((m: any) => m.id || m).filter(Boolean);
         const dynamicModels = modelIds.map(classifyModel);
-
-        return json({
-          success: true,
-          count: dynamicModels.length,
-          data: dynamicModels
-        });
+        return json({ success: true, count: dynamicModels.length, data: dynamicModels });
       } catch (err: any) {
         return json({ success: false, error: err.message }, 500);
       }
     }
 
+    // Direct SSE Stream
     if (url.pathname === "/api/playground/execute" && request.method === "POST") {
       try {
         const body: any = await request.json();
-        const requestedModel = (body.model || "").trim();
+        const requestedModel = (body.model || "Oc-uni/gpt-6-astra").trim();
         const incomingMessages = Array.isArray(body.messages) && body.messages.length > 0
           ? body.messages
           : [{ role: "user", content: body.prompt || "" }];
 
-        if (!requestedModel) {
-          return json({ success: false, error: "Parameter model wajib dipilih." }, 400);
-        }
-
-        const upstreamResponse = await fetch(`${TARGET_BASE}/chat/completions`, {
+        const upstreamRes = await fetch(`${TARGET_BASE}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -116,16 +109,16 @@ export default {
           })
         });
 
-        if (!upstreamResponse.ok) {
-          const errText = await upstreamResponse.text();
+        if (!upstreamRes.ok) {
+          const errText = await upstreamRes.text();
           return json({
             success: false,
             model: requestedModel,
-            error: `Upstream error (${upstreamResponse.status}): ${errText}`
-          }, upstreamResponse.status);
+            error: `Upstream error (${upstreamRes.status}): ${errText}`
+          }, upstreamRes.status);
         }
 
-        return new Response(upstreamResponse.body, {
+        return new Response(upstreamRes.body, {
           status: 200,
           headers: {
             "Content-Type": "text/event-stream; charset=utf-8",
@@ -141,6 +134,41 @@ export default {
       }
     }
 
-    return json({ message: "X AWD Pure Live Gateway Online" });
+    // Telegram Bot Webhook
+    if (url.pathname === "/api/telegram/webhook" && request.method === "POST") {
+      try {
+        const update: any = await request.json();
+        const msg = update?.message;
+        if (msg && msg.text) {
+          const chatId = msg.chat.id;
+          const userText = msg.text.trim();
+          const task = (async () => {
+            const res = await fetch(`${TARGET_BASE}/chat/completions`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${PRIMARY_KEY}`
+              },
+              body: JSON.stringify({
+                model: "Oc-uni/gpt-6-astra",
+                messages: [{ role: "user", content: userText }]
+              })
+            });
+            const d: any = await res.json().catch(() => ({}));
+            const reply = d?.choices?.[0]?.message?.content || "Upstream tidak merespons.";
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: reply.slice(0, 4000) })
+            });
+          })();
+          if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(task);
+          else await task;
+        }
+      } catch (_) {}
+      return json({ ok: true });
+    }
+
+    return json({ message: "X AWD Dynamic Pure Stream Gateway Active" });
   }
 };
