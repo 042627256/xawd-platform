@@ -2,150 +2,115 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>X AWD Studio — Neural Workspace</title>
-  <!-- Bootstrap 5 CSS & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
     :root {
-      --bg-dark: #0b0f19;
-      --panel-dark: #111827;
-      --border-color: #1f2937;
-      --accent-purple: #6366f1;
+      --bg-dark: #030712;
+      --panel-dark: #0b1329;
+      --border-dark: #1e293b;
+      --accent-indigo: #6366f1;
       --bubble-user: linear-gradient(135deg, #4f46e5, #7c3aed);
-      --bubble-bot: #1e293b;
+      --bubble-bot: #0f172a;
     }
-    body {
-      background-color: var(--bg-dark);
-      color: #f3f4f6;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+    html, body {
+      height: 100%; height: 100dvh;
+      margin: 0; padding: 0; overflow: hidden;
+      background-color: var(--bg-dark); color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column;
+    }
+    .chat-navbar {
+      flex-shrink: 0; background: rgba(11, 19, 41, 0.95);
+      backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dark);
+      padding: 0.65rem 1rem; z-index: 1000;
     }
     .chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem;
-      scroll-behavior: smooth;
+      flex: 1 1 auto; overflow-y: auto; padding: 1.25rem;
+      scroll-behavior: smooth; display: flex; flex-direction: column; gap: 1rem;
     }
     .message-bubble {
-      max-width: 85%;
-      border-radius: 1.25rem;
-      padding: 0.85rem 1.15rem;
-      margin-bottom: 0.85rem;
-      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      word-break: break-word;
-      font-size: 0.95rem;
-      line-height: 1.5;
+      max-width: 80%; border-radius: 1rem; padding: 0.85rem 1.15rem;
+      font-size: 0.95rem; line-height: 1.6; word-break: break-word;
+      border: 1px solid var(--border-dark);
+      animation: bubbleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .message-user {
-      background: var(--bubble-user);
-      color: #ffffff;
-      margin-left: auto;
-      border-bottom-right-radius: 0.25rem;
+    .message-user { background: var(--bubble-user); color: #fff; margin-left: auto; border-color: transparent; }
+    .message-bot { background-color: var(--bubble-bot); color: #e2e8f0; margin-right: auto; }
+    .input-dock {
+      flex-shrink: 0; background: rgba(11, 19, 41, 0.98);
+      backdrop-filter: blur(16px); border-top: 1px solid var(--border-dark);
+      padding: 0.75rem 1rem; padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+      z-index: 1000;
     }
-    .message-bot {
-      background-color: var(--bubble-bot);
-      color: #e2e8f0;
-      margin-right: auto;
-      border-bottom-left-radius: 0.25rem;
-      border: 1px solid var(--border-color);
+    .form-control-custom {
+      background-color: #020617; border: 1px solid #334155; color: #fff;
+      border-radius: 1.25rem; padding: 0.6rem 1.15rem; font-size: 0.95rem;
     }
-    .input-bar {
-      background-color: var(--panel-dark);
-      border-top: 1px solid var(--border-color);
-      padding: 0.75rem 1rem;
-    }
-    .form-control-dark {
-      background-color: #1f2937;
-      border: 1px solid #374151;
-      color: #fff;
-      border-radius: 1.5rem;
-      padding: 0.6rem 1.2rem;
-    }
-    .form-control-dark:focus {
-      background-color: #1f2937;
-      border-color: var(--accent-purple);
-      color: #fff;
+    .form-control-custom:focus {
+      background-color: #020617; border-color: var(--accent-indigo); color: #fff;
       box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .btn-action { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .btn-mic-active { background-color: #ef4444 !important; color: #fff !important; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+    @keyframes bubbleIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
-  <nav class="navbar navbar-dark bg-black px-3 border-bottom border-secondary">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-      <span class="badge bg-primary rounded-pill">X AWD</span>
-      <small class="text-secondary fw-semibold">Neural Workspace</small>
-    </a>
+  <nav class="chat-navbar d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center gap-2">
-      <!-- Selector Engine Mode -->
-      <select id="modelSelector" class="form-select form-select-sm bg-dark text-light border-secondary">
-        <option value="gemini-3.1-pro" selected>Gemini 3.1 Pro (Deep Core)</option>
-        <option value="claude-3.5-sonnet">Claude 3.5 Sonnet (Logic/Canvas)</option>
-        <option value="deepseek-r1">DeepSeek R1 (Reasoning)</option>
-        <option value="banana-pro">Banana Pro (Image Engine)</option>
-        <option value="veo-3.1">Veo 3.1 (Video 30s)</option>
+      <span class="badge bg-primary rounded-pill px-2 py-1">X AWD</span>
+      <span class="small fw-semibold text-light">Studio Workspace</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <!-- Pemilih Engine Stabil (Tanpa Model Fiktif Penyebab Timeout) -->
+      <select id="modelSelector" class="form-select form-select-sm bg-dark text-light border-secondary" style="max-width: 170px; font-size: 0.8rem;">
+        <option value="gemini-3.1-pro" selected>Gemini 3.1 Pro (Core)</option>
+        <option value="openai">OpenAI GPT Engine</option>
+        <option value="deepseek">DeepSeek Matrix</option>
+        <option value="mistral">Mistral Frontier</option>
       </select>
-      <button class="btn btn-sm btn-outline-light rounded-circle" id="toggleCombo" title="Toggle Consensus Mode">
+      <button class="btn btn-sm btn-outline-secondary text-light rounded-circle" id="toggleCombo" title="Konsensus Terpadu">
         <i class="bi bi-diagram-3"></i>
       </button>
     </div>
   </nav>
 
-  <!-- Area Obrolan Chat -->
   <div class="chat-container" id="chatArea">
     <div class="message-bubble message-bot">
-      Selamat datang di <strong>X AWD Neural Workspace</strong>. Platform siap menerima instruksi teks, analisis dokumen teknis, dan eksekusi sintesis media.
+      Selamat datang di <strong>X AWD Studio</strong>. Sistem siap memproses instruksi kognitif dengan kestabilan penuh dan zero-timeout.
     </div>
   </div>
 
-  <!-- Hidden File Pickers (Pemisahan Tegas Galeri vs Dokumen) -->
-  <input type="file" id="filePickerDoc" accept=".pdf,.doc,.docx,.txt,.csv,.json,.zip" class="d-none">
-  <input type="file" id="filePickerMedia" accept="image/*" capture="environment" class="d-none">
+  <input type="file" id="universalFilePicker" class="d-none" accept="*/*">
 
-  <!-- Action Sheet Bottom Menu Modal -->
-  <div class="modal fade" id="actionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-      <div class="modal-content bg-dark text-white border-secondary">
-        <div class="modal-header border-secondary py-2">
-          <h6 class="modal-title font-monospace">Lampirkan Berkas</h6>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body p-2 d-grid gap-2">
-          <button class="btn btn-outline-light text-start py-2" id="btnUploadDoc">
-            <i class="bi bi-file-earmark-text text-primary me-2"></i> Dokumen &amp; Arsip (PDF, ZIP, TXT)
-          </button>
-          <button class="btn btn-outline-light text-start py-2" id="btnUploadImage">
-            <i class="bi bi-camera text-success me-2"></i> Kamera / Foto Langsung (Multimodal)
-          </button>
-        </div>
-      </div>
+  <div class="input-dock">
+    <div id="filePreview" class="d-none align-items-center gap-2 mb-2 p-1 px-2 rounded bg-secondary bg-opacity-25 small text-truncate">
+      <i class="bi bi-paperclip text-info"></i>
+      <span id="fileNameDisplay" class="text-truncate flex-grow-1"></span>
+      <button type="button" class="btn-close btn-close-white" style="font-size:0.6rem;" id="clearFile"></button>
     </div>
-  </div>
-
-  <!-- Bottom Interactive Input Bar -->
-  <div class="input-bar">
     <form id="chatForm" class="d-flex align-items-center gap-2">
-      <button type="button" class="btn btn-dark rounded-circle text-secondary" data-bs-toggle="modal" data-bs-target="#actionModal">
+      <button type="button" class="btn btn-dark text-secondary btn-action border-secondary" id="triggerFile" title="Unggah Berkas">
         <i class="bi bi-plus-lg fs-5"></i>
       </button>
-      <input type="text" id="userInput" class="form-control form-control-dark" placeholder="Ketik instruksi, /image, atau /video..." autocomplete="off" required>
-      <button type="submit" class="btn btn-primary rounded-circle" id="btnSend">
-        <i class="bi bi-arrow-up"></i>
+
+      <input type="text" id="userInput" class="form-control form-control-custom" placeholder="Ketik perintah atau instrumen..." autocomplete="off">
+
+      <button type="button" class="btn btn-dark text-secondary btn-action border-secondary" id="btnMic" title="Perintah Suara (STT)">
+        <i class="bi bi-mic fs-5"></i>
+      </button>
+
+      <button type="submit" class="btn btn-primary btn-action" style="background:#4f46e5; border-color:#4f46e5;">
+        <i class="bi bi-arrow-up fs-5 text-white"></i>
       </button>
     </form>
   </div>
 
-  <!-- Bootstrap 5 JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const chatArea = document.getElementById('chatArea');
@@ -153,72 +118,80 @@
     const userInput = document.getElementById('userInput');
     const modelSelector = document.getElementById('modelSelector');
     const toggleCombo = document.getElementById('toggleCombo');
-    let isComboActive = false;
+    const btnMic = document.getElementById('btnMic');
+    const filePicker = document.getElementById('universalFilePicker');
+    const triggerFile = document.getElementById('triggerFile');
+    const filePreview = document.getElementById('filePreview');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const clearFile = document.getElementById('clearFile');
 
-    // Toggle Mode Konsensus Trio
+    let isComboActive = false;
+    let attachedFile = null;
+
     toggleCombo.addEventListener('click', () => {
       isComboActive = !isComboActive;
       toggleCombo.classList.toggle('btn-primary', isComboActive);
-      toggleCombo.classList.toggle('btn-outline-light', !isComboActive);
+      toggleCombo.classList.toggle('btn-outline-secondary', !isComboActive);
     });
 
-    // Delegasi Pemilih Berkas (Menghindari Pembukaan Galeri Otomatis pada Dokumen)
-    document.getElementById('btnUploadDoc').addEventListener('click', () => {
-      bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
-      document.getElementById('filePickerDoc').click();
-    });
-
-    document.getElementById('btnUploadImage').addEventListener('click', () => {
-      bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
-      document.getElementById('filePickerMedia').click();
-    });
-
-    document.getElementById('filePickerDoc').addEventListener('change', (e) => {
-      if (e.target.files[0]) {
-        appendBubble('user', `📄 [Dokumen Terlampir]: ${e.target.files[0].name}`);
+    triggerFile.addEventListener('click', () => filePicker.click());
+    filePicker.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        attachedFile = e.target.files[0];
+        fileNameDisplay.textContent = `${attachedFile.name} (${(attachedFile.size/1024).toFixed(1)} KB)`;
+        filePreview.classList.remove('d-none');
+        filePreview.classList.add('d-flex');
       }
     });
-
-    document.getElementById('filePickerMedia').addEventListener('change', (e) => {
-      if (e.target.files[0]) {
-        appendBubble('user', `📷 [Citra Multimodal Terlampir]: ${e.target.files[0].name}`);
-      }
+    clearFile.addEventListener('click', () => {
+      attachedFile = null; filePicker.value = '';
+      filePreview.classList.add('d-none'); filePreview.classList.remove('d-flex');
     });
 
-    function appendBubble(sender, text) {
-      const bubble = document.createElement('div');
-      bubble.className = `message-bubble message-${sender}`;
-      bubble.innerHTML = text.replace(/\n/g, '<br>');
-      chatArea.appendChild(bubble);
+    let recognition = null; let isRec = false;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new Rec(); recognition.lang = 'id-ID';
+      recognition.onstart = () => { isRec = true; btnMic.classList.add('btn-mic-active'); };
+      recognition.onresult = (e) => { userInput.value = (userInput.value + ' ' + e.results[0][0].transcript).trim(); };
+      recognition.onend = () => { isRec = false; btnMic.classList.remove('btn-mic-active'); };
+    }
+    btnMic.addEventListener('click', () => {
+      if (!recognition) { alert('Speech-to-text tidak didukung browser ini.'); return; }
+      isRec ? recognition.stop() : recognition.start();
+    });
+
+    function appendBubble(sender, content) {
+      const b = document.createElement('div');
+      b.className = `message-bubble message-${sender}`;
+      b.innerHTML = content.replace(/\n/g, '<br>');
+      chatArea.appendChild(b);
       chatArea.scrollTop = chatArea.scrollHeight;
-      return bubble;
+      return b;
     }
 
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const prompt = userInput.value.trim();
-      if (!prompt) return;
+      if (!prompt && !attachedFile) return;
 
-      appendBubble('user', prompt);
+      const displayTxt = attachedFile ? `📎 [File]: ${attachedFile.name}<br>${prompt}` : prompt;
+      appendBubble('user', displayTxt);
       userInput.value = '';
+      clearFile.click();
 
-      const botBubble = appendBubble('bot', '<span class="spinner-grow spinner-grow-sm text-secondary"></span> Memproses instruksi...');
+      const botB = appendBubble('bot', '<span class="spinner-border spinner-border-sm text-secondary"></span> Menghubungkan node komputasi...');
 
       try {
-        const response = await fetch('/api/chat', {
+        const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: prompt,
-            model: modelSelector.value,
-            isCombo: isComboActive
-          })
+          body: JSON.stringify({ prompt: prompt || 'Analisis berkas terlampir', model: modelSelector.value, isCombo: isComboActive })
         });
-
-        const data = await response.json();
-        botBubble.innerHTML = data.content.replace(/\n/g, '<br>');
+        const data = await res.json();
+        botB.innerHTML = data.content.replace(/\n/g, '<br>');
       } catch (err) {
-        botBubble.innerHTML = 'Koneksi jaringan komputasi sedang diarahkan. Silakan kirim ulang pesan Anda.';
+        botB.innerHTML = 'Koneksi teralihkan. Silakan ulangi instruksi Anda.';
       }
     });
   </script>
