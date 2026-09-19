@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X AWD — Autonomous Neural Matrix &amp; Spatial DePIN</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root { --bg: #060911; --card: #0f172a; --accent: #4f46e5; }
+    body { background-color: var(--bg); color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow-x: hidden; }
+    .navbar-glass { background: rgba(6, 9, 17, 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid #1e293b; }
+    .hero-section { min-height: 80vh; display: flex; align-items: center; background: radial-gradient(circle at 50% 25%, rgba(79, 70, 229, 0.18), transparent 70%); }
+    .card-custom { background-color: var(--card); border: 1px solid #1e293b; border-radius: 1rem; transition: transform 0.2s; }
+    .card-custom:hover { transform: translateY(-4px); border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-glass">
+    <div class="container">
+      <a class="navbar-brand fw-bold text-white d-flex align-items-center gap-2" href="#">
+        <span class="badge bg-primary">X AWD</span>
+        <span>Neural Matrix</span>
+      </a>
+      
+      <!-- Pemilih Bahasa Global Dinamis -->
+      <div class="d-flex align-items-center gap-2 ms-auto me-3 me-lg-0 order-lg-last">
+        <i class="bi bi-translate text-secondary"></i>
+        <select id="langSelect" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: 140px;" onchange="changeLanguage(this.value)">
+          <option value="en" selected>English</option>
+          <option value="id">Indonesia</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文 (HK/TW)</option>
+          <option value="es">Español (MX)</option>
+          <option value="pt">Português</option>
+          <option value="ar">العربية</option>
+          <option value="ru">Русский</option>
+          <option value="vi">Tiếng Việt</option>
+          <option value="th">ไทย</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="nl">Nederlands</option>
+          <option value="el">Ελληνικά</option>
+          <option value="no">Norsk</option>
+          <option value="pl">Polski</option>
+          <option value="ko">한국어</option>
+          <option value="kk">Қазақша</option>
+          <option value="af">Afrikaans</option>
+        </select>
+      </div>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="#solutions" data-i18n="nav_solutions">Solutions</a></li>
+          <li class="nav-item"><a class="nav-link" href="#about" data-i18n="nav_about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#pricing" data-i18n="nav_pricing">Pricing</a></li>
+          <li class="nav-item"><a class="nav-link" href="#careers" data-i18n="nav_careers">Careers</a></li>
+          <li class="nav-item"><a class="nav-link" href="#legal" data-i18n="nav_legal">T&amp;C &amp; Force Majeure</a></li>
+        </ul>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-info rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#registerModal" data-i18n="btn_register">Register</button>
+          <a class="btn btn-sm btn-primary rounded-pill px-3" href="https://app.xawd.my.id" style="background:#4f46e5;" data-i18n="btn_open_app">Open Studio</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-section text-center pt-5">
+    <div class="container py-5">
+      <div class="badge bg-secondary bg-opacity-25 text-info px-3 py-2 rounded-pill mb-3" data-i18n="hero_badge">
+        STATELESS SOVEREIGN INTELLIGENCE NETWORK
+      </div>
+      <h1 class="display-4 fw-extrabold mb-3 text-white" data-i18n="hero_title">
+        Autonomous Neural Matrix &amp; Spatial DePIN
+      </h1>
+      <p class="lead text-secondary mx-auto mb-4" style="max-width: 720px;" data-i18n="hero_subtitle">
+        Bridging multi-engine frontier AI compute with verified physical presence and micro-geospatial telemetry.
+      </p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="https://app.xawd.my.id" class="btn btn-primary btn-lg rounded-pill px-4" style="background:#4f46e5;" data-i18n="btn_launch">Launch Studio</a>
+        <a href="https://geo.xawd.my.id" class="btn btn-outline-secondary btn-lg rounded-pill px-4 text-light" data-i18n="btn_spatial">Explore SpatialGrid</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Solutions Section -->
+  <section class="py-5" id="solutions">
+    <div class="container py-4">
+      <h3 class="fw-bold text-center mb-4" data-i18n="sol_title">Ecosystem Pillars</h3>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card-custom p-4 h-100">
+            <i class="bi bi-cpu fs-2 text-primary mb-3"></i>
+            <h5 class="fw-bold text-white">X AWD Studio</h5>
+            <p class="text-secondary small" data-i18n="sol_studio">Anonymous multi-engine consensus routing, persistent prompt memory, and zero-latency failover.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card-custom p-4 h-100">
+            <i class="bi bi-geo-alt fs-2 text-success mb-3"></i>
+            <h5 class="fw-bold text-white">SpatialGrid</h5>
+            <p class="text-secondary small" data-i18n="sol_spatial">Commercial POI verification, last-mile PUDO gate logistics, and Wi-Fi hardware beacon deduplication.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card-custom p-4 h-100">
+            <i class="bi bi-shield-lock fs-2 text-info mb-3"></i>
+            <h5 class="fw-bold text-white">Military-Grade Defense</h5>
+            <p class="text-secondary small" data-i18n="sol_defense">Zero-trust edge validation, IMU gyroscope attestation against screen replay attacks, and 3-tier breach mitigation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section class="py-5 bg-black bg-opacity-50" id="pricing">
+    <div class="container py-4 text-center">
+      <h3 class="fw-bold text-white mb-2" data-i18n="price_title">Compute Tiers</h3>
+      <p class="text-secondary small mb-4" data-i18n="price_subtitle">Transparent pay-as-you-go or dedicated enterprise pass.</p>
+      <div class="row g-4 justify-content-center text-start">
+        <div class="col-md-4">
+          <div class="card-custom p-4">
+            <h5 class="fw-bold text-white">Explorer</h5>
+            <h3 class="fw-bold my-3 text-white">$0 <small class="fs-6 text-secondary">/ forever</small></h3>
+            <ul class="small text-secondary ps-3 mb-4">
+              <li>Unlimited Low &amp; Medium Tier</li>
+              <li>Basic single-prompt chat</li>
+              <li>Standard edge latency</li>
+            </ul>
+            <a href="https://app.xawd.my.id" class="btn btn-outline-secondary w-100 rounded-pill" data-i18n="btn_free">Use Free</a>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card-custom p-4 border-primary">
+            <div class="badge bg-primary mb-2">MOST POPULAR</div>
+            <h5 class="fw-bold text-white">Pro Matrix</h5>
+            <h3 class="fw-bold my-3 text-white">$6.50 <small class="fs-6 text-secondary">/ month</small></h3>
+            <ul class="small text-secondary ps-3 mb-4">
+              <li>High-tier reasoning models</li>
+              <li>Universal file ingestion</li>
+              <li>Speech-to-text integration</li>
+            </ul>
+            <button class="btn btn-primary w-100 rounded-pill" style="background:#4f46e5;" onclick="alert('Ephemeral checkout session generated.');" data-i18n="btn_upgrade">Upgrade Pro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="py-5" id="about">
+    <div class="container py-4">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <h3 class="fw-bold text-white mb-3" data-i18n="about_title">Autonomous Infrastructure</h3>
+          <p class="text-secondary" data-i18n="about_desc">
+            X AWD operates as a sovereign decentralized network bridging physical world data verification with advanced multimodal artificial intelligence. Built entirely on serverless edge compute to guarantee zero single points of failure.
+          </p>
+        </div>
+        <div class="col-lg-6">
+          <div class="card-custom p-4">
+            <h6 class="text-info font-monospace">DECENTRALIZED ARCHITECTURE</h6>
+            <p class="small text-secondary mb-0" data-i18n="about_box">
+              Operating with dual operational independence: digital cognitive models orchestrating globally, paired with hardware attestation nodes locally.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Careers Section -->
+  <section class="py-5 bg-black bg-opacity-50" id="careers">
+    <div class="container py-4 text-center">
+      <h3 class="fw-bold text-white mb-4" data-i18n="careers_title">Global Contributions</h3>
+      <div class="row justify-content-center g-3 text-start">
+        <div class="col-md-5">
+          <div class="card-custom p-3">
+            <h6 class="fw-bold text-white mb-1" data-i18n="careers_role1">Field Verification Contributor</h6>
+            <span class="badge bg-success mb-2">Remote / Global</span>
+            <p class="text-secondary small mb-0" data-i18n="careers_role1_desc">Map commercial POIs and audit urban PUDO gates using the SpatiaWallet mobile node.</p>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="card-custom p-3">
+            <h6 class="fw-bold text-white mb-1" data-i18n="careers_role2">Model Logic &amp; Prompt Curator</h6>
+            <span class="badge bg-primary mb-2">Decentralized Bounty</span>
+            <p class="text-secondary small mb-0" data-i18n="careers_role2_desc">Benchmark frontier consensus models and curate specialized AGENTS.md workspaces.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Legal, TNC & Force Majeure Section -->
+  <section class="py-5" id="legal">
+    <div class="container py-4">
+      <h4 class="fw-bold text-white mb-3" data-i18n="legal_title">Terms of Service &amp; Force Majeure</h4>
+      <div class="card-custom p-3 font-monospace small text-secondary" style="max-height: 200px; overflow-y: auto;">
+        1. PROOF OF PHYSICAL PRESENCE: Screen-replay attacks, mock GPS injections, or digital image alterations result in automatic hardware blacklist.<br>
+        2. DATA OWNERSHIP: Verified telemetry datasets are cryptographically signed and licensed to commercial logistic networks.<br>
+        3. FORCE MAJEURE: The network is not liable for disruptions resulting from undersea cable severance, telecommunications provider failure, solar storms, regulatory suspension of external API providers, or sovereign cyber-warfare actions.<br>
+        4. SINGLE HUMAN IDENTITY: Sybil attacks, automated crawler scripts, and multi-accounting immediately forfeit all accrued computational credits and token points.
+      </div>
+    </div>
+  </section>
+
+  <!-- Register Modal -->
+  <div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title font-monospace" data-i18n="modal_reg_title">Account Registration</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form onsubmit="event.preventDefault(); alert('Account registered! Redirecting to workspace.'); location.href='https://app.xawd.my.id';">
+            <div class="mb-3">
+              <label class="small text-secondary" data-i18n="form_email">Email Address</label>
+              <input type="email" class="form-control bg-black text-white border-secondary" required placeholder="name@institution.edu">
+            </div>
+            <div class="mb-3">
+              <label class="small text-secondary" data-i18n="form_pass">Password</label>
+              <input type="password" class="form-control bg-black text-white border-secondary" required placeholder="••••••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2" style="background:#4f46e5;" data-i18n="btn_confirm_reg">Create Sovereign ID</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="py-4 text-center border-top border-secondary text-secondary small">
+    &copy; 2026 X AWD Autonomous Ecosystem. All Rights Reserved.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Kamus Multibahasa Statis (Tanpa Penerjemah Mesin)
+    const translations = {
+      en: {
+        nav_solutions: "Solutions", nav_about: "About", nav_pricing: "Pricing", nav_careers: "Careers", nav_legal: "T&C & Force Majeure",
+        btn_register: "Register", btn_open_app: "Open Studio", hero_badge: "STATELESS SOVEREIGN INTELLIGENCE NETWORK",
+        hero_title: "Autonomous Neural Matrix & Spatial DePIN", hero_subtitle: "Bridging multi-engine frontier AI compute with verified physical presence and micro-geospatial telemetry.",
+        btn_launch: "Launch Studio", btn_spatial: "Explore SpatialGrid", sol_title: "Ecosystem Pillars",
+        sol_studio: "Anonymous multi-engine consensus routing, persistent prompt memory, and zero-latency failover.",
+        sol_spatial: "Commercial POI verification, last-mile PUDO gate logistics, and Wi-Fi hardware beacon deduplication.",
+        sol_defense: "Zero-trust edge validation, IMU gyroscope attestation against screen replay attacks, and 3-tier breach mitigation.",
+        price_title: "Compute Tiers", price_subtitle: "Transparent pay-as-you-go or dedicated enterprise pass.", btn_free: "Use Free", btn_upgrade: "Upgrade Pro",
+        about_title: "Autonomous Infrastructure", about_desc: "X AWD operates as a sovereign decentralized network bridging physical world data verification with advanced multimodal artificial intelligence.",
+        about_box: "Operating with dual operational independence: digital cognitive models orchestrating globally, paired with hardware attestation nodes locally.",
+        careers_title: "Global Contributions", careers_role1: "Field Verification Contributor", careers_role1_desc: "Map commercial POIs and audit urban PUDO gates using the SpatiaWallet mobile node.",
+        careers_role2: "Model Logic & Prompt Curator", careers_role2_desc: "Benchmark frontier consensus models and curate specialized AGENTS.md workspaces.",
+        legal_title: "Terms of Service & Force Majeure", modal_reg_title: "Account Registration", form_email: "Email Address", form_pass: "Password", btn_confirm_reg: "Create Sovereign ID"
+      },
+      id: {
+        nav_solutions: "Solusi", nav_about: "Tentang", nav_pricing: "Harga", nav_careers: "Karir", nav_legal: "T&C & Keadaan Kahar",
+        btn_register: "Daftar", btn_open_app: "Buka Studio", hero_badge: "JARINGAN INTELIJEN BERDAULAT OTONOM",
+        hero_title: "Matriks Neural & DePIN Spasial Otonom", hero_subtitle: "Menjembatani komputasi AI frontier multi-engine dengan verifikasi kehadiran fisik nyata dan telemetri mikro-geospasial.",
+        btn_launch: "Mulai Studio", btn_spatial: "Buka SpatialGrid", sol_title: "Pilar Solusi Ekosistem",
+        sol_studio: "Perutean konsensus multi-engine anonim, memori prompt persisten, dan pengalihan failover senyap.",
+        sol_spatial: "Verifikasi POI komersial, logistik gerbang PUDO perkotaan, dan deduplikasi router fisik Wi-Fi.",
+        sol_defense: "Validasi zero-trust edge, verifikasi giroskop sensor inersia penangkal manipulasi layar laptop, dan mitigasi pelanggaran bertingkat.",
+        price_title: "Paket Komputasi", price_subtitle: "Sistem kredit transparan tanpa biaya langganan tersembunyi.", btn_free: "Gunakan Gratis", btn_upgrade: "Beli Paket Pro",
+        about_title: "Infrastruktur Otonom", about_desc: "X AWD beroperasi sebagai jaringan terdesentralisasi yang menyatukan verifikasi data dunia nyata dengan kecerdasan buatan multimodal canggih.",
+        about_box: "Beroperasi dengan independensi ganda: model kognitif terorkestrasi global, dipadukan node verifikasi fisik hardware lokal.",
+        careers_title: "Peluang Kontribusi", careers_role1: "Mitra Verifikator Lapangan", careers_role1_desc: "Petakan titik POI dan audit gerbang kurir PUDO menggunakan aplikasi mobile SpatiaWallet.",
+        careers_role2: "Kurator Logika & Prompt AI", careers_role2_desc: "Uji performa konsensus model dan kurasi repositori persona AGENTS.md.",
+        legal_title: "Ketentuan Layanan & Keadaan Kahar", modal_reg_title: "Pendaftaran Akun", form_email: "Alamat Email", form_pass: "Kata Sandi", btn_confirm_reg: "Buat Akun Berdaulat"
+      },
+      "zh-CN": {
+        nav_solutions: "解决方案", nav_about: "关于我们", nav_pricing: "定价", nav_careers: "招募", nav_legal: "条款与不可抗力",
+        btn_register: "注册", btn_open_app: "进入工作区", hero_badge: "无状态主权智能计算网络",
+        hero_title: "自主神经矩阵与空间DePIN网络", hero_subtitle: "融合前沿多模型AI调度与实体物理存在验证及微观地理空间遥测技术。",
+        btn_launch: "启动工作区", btn_spatial: "探索SpatialGrid", sol_title: "核心生态支柱",
+        sol_studio: "匿名多模型共识调度、持久化提示词记忆库与零延迟故障转移。",
+        sol_spatial: "商业兴趣点验证、末端物流PUDO出入口导航与物理Wi-Fi路由去重。",
+        sol_defense: "零信任边缘审计、基于陀螺仪微动防屏幕翻拍验证与三级反作弊防御。",
+        price_title: "算力套餐", price_subtitle: "透明按量计费，无任何隐形开支。", btn_free: "免费体验", btn_upgrade: "升级专业版",
+        about_title: "自主计算架构", about_desc: "X AWD 是一个去中心化物理基础设施与多模态认知网络，消除任何单点故障。",
+        about_box: "全球化认知矩阵协同计算，与本地物理硬件签名节点无缝结合。",
+        careers_title: "全球招募", careers_role1: "实地空间验证节点", careers_role1_desc: "使用SpatiaWallet安卓原生应用执行末端出入口及商户数据采集。",
+        careers_role2: "提示词工程师与模型审计师", careers_role2_desc: "评测前沿模型输出并维护专业AGENTS.md知识库。",
+        legal_title: "服务条款与不可抗力", modal_reg_title: "注册通行证", form_email: "电子邮箱", form_pass: "安全密码", btn_confirm_reg: "创建身份"
+      },
+      es: {
+        nav_solutions: "Soluciones", nav_about: "Nosotros", nav_pricing: "Precios", nav_careers: "Carreras", nav_legal: "Términos y Fuerza Mayor",
+        btn_register: "Registrarse", btn_open_app: "Abrir Estudio", hero_badge: "RED DE INTELIGENCIA SOBERANA APÁTRIDA",
+        hero_title: "Matriz Neuronal Autónoma y DePIN Espacial", hero_subtitle: "Integración de cómputo IA multifrontera con verificación de presencia física y telemetría geoespacial.",
+        btn_launch: "Iniciar Estudio", btn_spatial: "Explorar SpatialGrid", sol_title: "Pilares del Ecosistema",
+        sol_studio: "Enrutamiento de consenso anónimo, memoria persistente de agentes y conmutación por error silenciosa.",
+        sol_spatial: "Verificación de POI comerciales, puntos PUDO logísticos y deduplicación física de Wi-Fi.",
+        sol_defense: "Validación de borde de confianza cero, atestación de giroscopio contra fotos de pantalla y defensa militar.",
+        price_title: "Niveles de Cómputo", price_subtitle: "Facturación transparente sin tarifas ocultas.", btn_free: "Usar Gratis", btn_upgrade: "Adquirir Pro",
+        about_title: "Infraestructura Autónoma", about_desc: "X AWD conecta la validación de datos del mundo físico con inteligencia artificial multimodal avanzada.",
+        about_box: "Operación de independencia dual: modelos cognitivos globales combinados con nodos físicos locales.",
+        careers_title: "Oportunidades", careers_role1: "Verificador de Campo", careers_role1_desc: "Mapea puntos comerciales y puertas de entrega mediante SpatiaWallet.",
+        careers_role2: "Curador de Prompts e IA", careers_role2_desc: "Evalúa modelos de consenso y construye repositorios de agentes.",
+        legal_title: "Términos del Servicio y Fuerza Mayor", modal_reg_title: "Registro de Cuenta", form_email: "Correo Electrónico", form_pass: "Contraseña", btn_confirm_reg: "Crear ID Soberano"
+      }
+    };
+
+    function changeLanguage(lang) {
+      const selectedLang = translations[lang] || translations['en'];
+      document.querySelectorAll('[data-i18n]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n');
+        if (selectedLang[key]) {
+          elem.textContent = selectedLang[key];
+        }
+      });
+      document.documentElement.lang = lang;
+    }
+  </script>
+</body>
+</html>
