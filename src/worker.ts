@@ -94,22 +94,35 @@ const COMBO_PRESETS: Record<string, { name: string; engines: string[]; arbiter: 
 let rrIndex: Record<string, number> = { ULTRA: 0, HIGH: 0, MEDIUM: 0, LOW: 0, FREE: 0 };
 
 async function fetchFromUpstream(model: string, messages: any[]): Promise<string> {
-  const res = await fetch(`${TARGET_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${PRIMARY_KEY}`
-    },
-    body: JSON.stringify({ model, messages, temperature: 0.7, stream: false })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 22000); // Batas 22 detik anti-524
 
-  const raw = await res.text();
-  if (!res.ok) {
-    throw new Error(`Upstream ${res.status}: ${raw.slice(0, 150)}`);
+  try {
+    const res = await fetch(`${TARGET_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${PRIMARY_KEY}`
+      },
+      body: JSON.stringify({ model, messages, temperature: 0.7, stream: false }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    const raw = await res.text();
+    if (!res.ok) {
+      throw new Error(`Upstream ${res.status}: ${raw.slice(0, 100)}`);
+    }
+    const cleaned = cleanUpstreamPayload(raw);
+    if (!cleaned) throw new Error("Respon kosong");
+    return cleaned;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error("Timeout 22s tercapai (upstream lambat)");
+    }
+    throw err;
   }
-  const cleaned = cleanUpstreamPayload(raw);
-  if (!cleaned) throw new Error("Upstream mengembalikan respon kosong");
-  return cleaned;
 }
 
 export default {
